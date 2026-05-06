@@ -1,8 +1,7 @@
 import { NewsItem } from '../types';
 
-const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY;
 const CACHE_KEY = 'domex_news_cache';
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const CACHE_TTL = 15 * 60 * 1000;
 
 const MOCK_NEWS: NewsItem[] = [
   {
@@ -137,31 +136,14 @@ export async function fetchIntelNews(): Promise<NewsItem[]> {
     }
   }
 
-  if (!NEWS_API_KEY) {
-    console.warn('NEWS_API_KEY no configurada. Usando datos mock.');
-    return MOCK_NEWS;
-  }
-
   try {
-    const queryES = 'inteligencia artificial OR mercado OR Trump OR Elon Musk OR Bitcoin OR acciones';
-    const queryEN = 'AI OR market OR Trump OR Musk';
-    
-    const [resES, resEN] = await Promise.all([
-      fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(queryES)}&language=es&sortBy=publishedAt&pageSize=15&apiKey=${NEWS_API_KEY}`),
-      fetch(`https://newsapi.org/v2/top-headlines?q=${encodeURIComponent(queryEN)}&language=en&pageSize=10&apiKey=${NEWS_API_KEY}`)
-    ]);
+    const res = await fetch('/api/news');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
 
-    const dataES = await resES.json();
-    const dataEN = await resEN.json();
+    if (data.error) throw new Error(data.error);
 
-    if (dataES.status === 'error' || dataEN.status === 'error') {
-      throw new Error(dataES.message || dataEN.message || 'Error en NewsAPI');
-    }
-
-    const combined: NewsItem[] = [
-      ...(dataES.articles || []),
-      ...(dataEN.articles || [])
-    ].map((art: any, idx: number) => ({
+    const combined: NewsItem[] = (data.articles || []).map((art: any, idx: number) => ({
       id: `news-${idx}-${art.publishedAt}`,
       titulo: art.title,
       resumen: art.description || art.content || 'Sin descripción disponible.',
@@ -173,7 +155,6 @@ export async function fetchIntelNews(): Promise<NewsItem[]> {
       personaje: extraerPersonaje(art.title, art.description || '')
     }));
 
-    // Deduplicate and sort
     const unique = Array.from(new Map(combined.map(item => [item.titulo, item])).values())
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
