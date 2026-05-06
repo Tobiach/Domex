@@ -146,20 +146,46 @@ export default function FloatingMicButton() {
             >
               <div className="flex items-center gap-3">
                 <HelpCircle size={20} className="text-amber-400" />
-                <p className="text-sm font-black text-white/60 uppercase tracking-widest">Confirmar</p>
+                <p className="text-sm font-black text-white/60 uppercase tracking-widest">
+                  {resultado.confianza < 70 ? '¿Cómo clasifico esto?' : 'Confirmar'}
+                </p>
               </div>
 
-              <div className={cn('px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest w-fit', TIPO_COLORS[resultado.tipo] || 'bg-primary')}>
-                {TIPO_LABELS[resultado.tipo]}
-              </div>
+              <p className="text-base font-bold leading-snug">{resultado.titulo}</p>
 
-              <p className="text-lg font-bold leading-snug">{resultado.titulo}</p>
-              {resultado.detalles.contexto && (
-                <p className="text-sm text-white/40">{resultado.detalles.contexto}</p>
+              {resultado.confianza < 70 ? (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Elegí el tipo:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(TIPO_LABELS).map(([tipo, label]) => (
+                      <button
+                        key={tipo}
+                        onClick={() => guardar({ ...resultado, tipo: tipo as any })}
+                        className={cn(
+                          'py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                          resultado.tipo === tipo
+                            ? cn(TIPO_COLORS[tipo], 'text-white')
+                            : 'bg-white/5 text-white/40 hover:bg-white/10'
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-white/20 font-medium text-center pt-1">Confianza: {resultado.confianza}%</p>
+                </div>
+              ) : (
+                <>
+                  <div className={cn('px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest w-fit', TIPO_COLORS[resultado.tipo] || 'bg-primary')}>
+                    {TIPO_LABELS[resultado.tipo]}
+                  </div>
+                  {resultado.detalles.contexto && (
+                    <p className="text-sm text-white/40">{resultado.detalles.contexto}</p>
+                  )}
+                </>
               )}
-              <p className="text-[10px] text-white/20 font-medium">Confianza: {resultado.confianza}%</p>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-1">
                 <button
                   onClick={cancelar}
                   className="flex-1 py-3 rounded-2xl bg-white/5 text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
@@ -167,13 +193,15 @@ export default function FloatingMicButton() {
                   <X size={14} />
                   Cancelar
                 </button>
-                <button
-                  onClick={() => guardar(resultado)}
-                  className="flex-2 flex-grow py-3 rounded-2xl bg-primary text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2"
-                >
-                  <Check size={14} />
-                  Guardar
-                </button>
+                {resultado.confianza >= 70 && (
+                  <button
+                    onClick={() => guardar(resultado)}
+                    className="flex-grow py-3 rounded-2xl bg-primary text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Check size={14} />
+                    Guardar
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

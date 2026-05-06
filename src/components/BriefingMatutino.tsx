@@ -13,9 +13,19 @@ function getBriefingKey() {
   return BRIEFING_KEY + new Date().toISOString().split('T')[0];
 }
 
+function getBriefingConfig() {
+  try {
+    return JSON.parse(localStorage.getItem('domex_briefing_config') || '{"enabled":true,"horaInicio":5,"horaFin":11}');
+  } catch {
+    return { enabled: true, horaInicio: 5, horaFin: 11 };
+  }
+}
+
 function esVentanaBriefing(): boolean {
+  const cfg = getBriefingConfig();
+  if (!cfg.enabled) return false;
   const hora = new Date().getHours();
-  return hora >= 5 && hora < 11;
+  return hora >= cfg.horaInicio && hora < cfg.horaFin;
 }
 
 interface Props {

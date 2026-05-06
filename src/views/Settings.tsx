@@ -14,6 +14,19 @@ import {
 import { useUserProfile } from '../hooks/useUserProfile';
 import { cn } from '../lib/utils';
 
+function useBriefingConfig() {
+  const [cfg, setCfg] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('domex_briefing_config') || '{"enabled":true,"horaInicio":5,"horaFin":11}'); }
+    catch { return { enabled: true, horaInicio: 5, horaFin: 11 }; }
+  });
+  const update = (patch: Partial<typeof cfg>) => {
+    const next = { ...cfg, ...patch };
+    setCfg(next);
+    localStorage.setItem('domex_briefing_config', JSON.stringify(next));
+  };
+  return { cfg, update };
+}
+
 const ACCENT_COLORS = [
   { name: 'Violeta', hex: '#7C3AED' },
   { name: 'Oro', hex: '#F59E0B' },
@@ -28,6 +41,7 @@ const ACCENT_COLORS = [
 export default function Settings() {
   const { profile, updateProfile, resetProfile } = useUserProfile();
   const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const { cfg: briefingCfg, update: updateBriefing } = useBriefingConfig();
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -239,6 +253,53 @@ export default function Settings() {
                 </div>
               </div>
           </div>
+        </div>
+      </section>
+
+      {/* Briefing Matutino */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Zap size={16} className="text-primary" />
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Briefing Matutino</h2>
+        </div>
+        <div className="glass-card p-6 border-white/5 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-white">Activar briefing</p>
+              <p className="text-[9px] text-white/30 mt-0.5">Resumen en voz al abrir la app</p>
+            </div>
+            <button
+              onClick={() => updateBriefing({ enabled: !briefingCfg.enabled })}
+              className={cn('w-12 h-7 rounded-full relative transition-colors p-1', briefingCfg.enabled ? 'bg-primary' : 'bg-white/10')}
+            >
+              <div className={cn('w-5 h-5 bg-white rounded-full transition-all', briefingCfg.enabled ? 'translate-x-5' : 'translate-x-0')} />
+            </button>
+          </div>
+
+          {briefingCfg.enabled && (
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Desde</label>
+                <select
+                  value={briefingCfg.horaInicio}
+                  onChange={(e) => updateBriefing({ horaInicio: parseInt(e.target.value) })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-primary/50"
+                >
+                  {[4,5,6,7,8,9].map(h => <option key={h} value={h}>{h}:00 am</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30">Hasta</label>
+                <select
+                  value={briefingCfg.horaFin}
+                  onChange={(e) => updateBriefing({ horaFin: parseInt(e.target.value) })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-primary/50"
+                >
+                  {[8,9,10,11,12].map(h => <option key={h} value={h}>{h}:00 {h < 12 ? 'am' : 'pm'}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

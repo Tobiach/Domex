@@ -1,36 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Target, TrendingUp, TrendingDown, Zap,
-  Newspaper, Calendar, ChevronRight, Check
+  Newspaper, Calendar, ChevronRight, Check, X
 } from 'lucide-react';
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useApp } from '../context/AppContext';
 import { useUserProfile } from '../hooks/useUserProfile';
-import { useStreaks, calcScore } from '../hooks/useStreaks';
+import { useStreaks, calcScore, saveDailyScore, getDailyScores } from '../hooks/useStreaks';
 import { cn } from '../lib/utils';
 import { hablarTexto } from '../services/voiceService';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import DomexInsight from '../components/DomexInsight';
 
-function ScoreCircle({ score }: { score: number }) {
+function ScoreCircle({ score, onClick }: { score: number; onClick: () => void }) {
   const r = 18;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   const color = score >= 90 ? '#10B981' : score >= 70 ? '#F59E0B' : '#F43F5E';
   return (
-    <svg width="44" height="44" viewBox="0 0 44 44">
-      <circle cx="22" cy="22" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
-      <circle
-        cx="22" cy="22" r={r} fill="none"
-        stroke={color} strokeWidth="3"
-        strokeDasharray={`${dash} ${circ}`}
-        strokeLinecap="round"
-        transform="rotate(-90 22 22)"
-        style={{ transition: 'stroke-dasharray 0.6s ease' }}
-      />
-      <text x="22" y="26" textAnchor="middle" fontSize="10" fontWeight="900" fill="white">{score}</text>
-    </svg>
+    <button onClick={onClick} className="hover:opacity-80 transition-opacity">
+      <svg width="44" height="44" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+        <circle
+          cx="22" cy="22" r={r} fill="none"
+          stroke={color} strokeWidth="3"
+          strokeDasharray={`${dash} ${circ}`}
+          strokeLinecap="round"
+          transform="rotate(-90 22 22)"
+          style={{ transition: 'stroke-dasharray 0.6s ease' }}
+        />
+        <text x="22" y="26" textAnchor="middle" fontSize="10" fontWeight="900" fill="white">{score}</text>
+      </svg>
+    </button>
   );
 }
 
@@ -56,9 +58,27 @@ export default function Dashboard() {
   const streak = useStreaks();
   const navigate = useNavigate();
 
+  const [celebrando, setCelebrando] = useState<string | null>(null);
+  const [showScoreBreakdown, setShowScoreBreakdown] = useState(false);
+  const [showGraph, setShowGraph] = useState(false);
+  const [historial, setHistorial] = useState(() => getDailyScores());
+
   const tareasFoco = tareas.filter(t => t.esFoco && !t.completada).slice(0, 3);
   const tareasCompletadas = tareas.filter(t => t.completada).length;
   const score = calcScore(tareasCompletadas, tareas.length, noticiasLeidas.length);
+
+  // Persist score diario
+  useEffect(() => {
+    const hoy = new Date().toISOString().split('T')[0];
+    saveDailyScore({
+      fecha: hoy,
+      score,
+      tareasCompletadas,
+      totalTareas: tareas.length,
+      noticiasLeidas: noticiasLeidas.length,
+    });
+    setHistorial(getDailyScores());
+  }, [score]);
 
   const btc = mercado.find(m => m.simbolo === 'BTC');
   const eth = mercado.find(m => m.simbolo === 'ETH');
@@ -73,6 +93,17 @@ export default function Dashboard() {
     : false;
 
   const nombre = profile.identity.nombre || 'Domex';
+
+  const completarTarea = (id: string) => {
+    alternarTarea(id);
+    setCelebrando(id);
+    setTimeout(() => setCelebrando(null), 1000);
+  };
+
+  const graphData = historial.slice(-14).map(d => ({
+    dia: d.fecha.slice(5),
+    score: d.score,
+  }));
 
   return (
     <div className="flex flex-col gap-3 pb-2">
@@ -93,9 +124,12 @@ export default function Dashboard() {
               <p className="text-[10px] font-black text-amber-400">{streak} días</p>
             </div>
           </div>
-          <ScoreCircle score={score} />
+          <ScoreCircle score={score} onClick={() => setShowScoreBreakdown(true)} />
         </div>
       </header>
+
+      {/* ── DOMEX INSIGHT ── */}
+      <DomexInsight />
 
       {/* ── TAREAS FOCO ── */}
       <section className="glass-card p-4 bg-white/[0.02] border-white/5 space-y-2">
@@ -113,17 +147,28 @@ export default function Dashboard() {
           <motion.div
             key={t.id}
             initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
+            animate={{
+              opacity: 1, x: 0,
+              backgroundColor: celebrando === t.id ? 'rgba(16,185,129,0.15)' : 'transparent',
+            }}
             transition={{ delay: i * 0.06 }}
-            className="flex items-center gap-3 py-1.5"
+            className="flex items-center gap-3 py-1.5 rounded-lg px-1 transition-colors"
           >
             <button
-              onClick={() => alternarTarea(t.id)}
-              className="w-5 h-5 rounded-md border-2 border-primary/30 flex items-center justify-center hover:border-primary transition-colors shrink-0"
+              onClick={() => completarTarea(t.id)}
+              className={cn(
+                'w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0',
+                celebrando === t.id
+                  ? 'border-emerald-500 bg-emerald-500'
+                  : 'border-primary/30 hover:border-primary'
+              )}
             >
-              <div className="w-2 h-2 rounded-sm bg-primary opacity-0 hover:opacity-100 transition-opacity" />
+              {celebrando === t.id && <Check size={12} className="text-white" />}
             </button>
-            <span className="text-sm font-medium leading-tight flex-1">{t.titulo}</span>
+            <span className={cn(
+              'text-sm font-medium leading-tight flex-1 transition-colors',
+              celebrando === t.id && 'line-through text-white/40'
+            )}>{t.titulo}</span>
             <span className={cn(
               'text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md',
               t.prioridad === 'alta' ? 'bg-red-500/20 text-red-400' :
@@ -132,7 +177,7 @@ export default function Dashboard() {
             )}>{t.prioridad}</span>
           </motion.div>
         )) : (
-          <p className="text-xs text-emerald-400 font-medium py-1">Sin tareas críticas — día libre 🎯</p>
+          <p className="text-xs text-emerald-400 font-medium py-1">Sin tareas críticas — enfocate en crecer 🎯</p>
         )}
       </section>
 
@@ -201,9 +246,6 @@ export default function Dashboard() {
               {proximaReunion.personas.length > 0 && ` · ${proximaReunion.personas.join(', ')}`}
             </p>
           </div>
-          <button onClick={() => navigate('/more')} className="text-white/20 hover:text-white transition-colors">
-            <ChevronRight size={16} />
-          </button>
         </motion.div>
       ) : (
         <motion.div
@@ -215,12 +257,91 @@ export default function Dashboard() {
           <div className="p-2 rounded-xl bg-white/5">
             <Calendar size={16} className="text-white/20" />
           </div>
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-0.5">Agenda</p>
-            <p className="text-sm text-white/40 font-medium">Sin reuniones programadas</p>
-          </div>
+          <p className="text-sm text-white/30 font-medium">Sin reuniones programadas</p>
         </motion.div>
       )}
+
+      {/* ── EVOLUCIÓN 30 DÍAS ── */}
+      <button
+        onClick={() => setShowGraph(!showGraph)}
+        className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-white/20 hover:text-white/40 transition-colors py-2 flex items-center justify-center gap-2"
+      >
+        {showGraph ? '▲' : '▼'} Evolución últimos {Math.min(historial.length, 14)} días
+      </button>
+
+      <AnimatePresence>
+        {showGraph && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="glass-card p-4 border-white/5 bg-white/[0.02] overflow-hidden"
+          >
+            {graphData.length > 1 ? (
+              <ResponsiveContainer width="100%" height={100}>
+                <LineChart data={graphData}>
+                  <XAxis dataKey="dia" tick={{ fontSize: 9, fill: 'rgba(255,255,255,0.3)' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: '#0F0F17', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 11 }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.4)' }}
+                    itemStyle={{ color: '#7C3AED' }}
+                    formatter={(v: number) => [`${v}pts`, 'Score']}
+                  />
+                  <Line type="monotone" dataKey="score" stroke="#7C3AED" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-xs text-white/20 text-center py-4">Usá Domex más días para ver tu evolución</p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL SCORE BREAKDOWN ── */}
+      <AnimatePresence>
+        {showScoreBreakdown && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowScoreBreakdown(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-xs bg-[#0F0F17] border border-white/10 rounded-3xl p-6 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-black uppercase tracking-widest">Score de hoy</p>
+                <button onClick={() => setShowScoreBreakdown(false)} className="text-white/30 hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex justify-center py-2">
+                <ScoreCircle score={score} onClick={() => {}} />
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-white/50">Tareas completadas</p>
+                  <p className="text-sm font-black">{tareasCompletadas}/{tareas.length} <span className="text-white/30 font-normal text-xs">= {Math.round(tareas.length > 0 ? (tareasCompletadas / tareas.length) * 50 : 0)}pts</span></p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-white/50">Noticias leídas</p>
+                  <p className="text-sm font-black">{noticiasLeidas.length}/3 <span className="text-white/30 font-normal text-xs">= {Math.round(Math.min(noticiasLeidas.length / 3, 1) * 50)}pts</span></p>
+                </div>
+                <div className="h-px bg-white/5" />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black text-white/70">Total</p>
+                  <p className="text-lg font-black text-primary">{score}<span className="text-white/30 text-xs font-normal">/100</span></p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -235,8 +356,7 @@ function NoticiaCard({ noticiasLeidas, marcarLeida }: { noticiasLeidas: string[]
       try {
         const { data } = JSON.parse(cached);
         const noLeidas = data.filter((n: any) => !noticiasLeidas.includes(n.id));
-        if (noLeidas.length > 0) setNoticia(noLeidas[0]);
-        else if (data.length > 0) setNoticia(data[0]);
+        setNoticia(noLeidas.length > 0 ? noLeidas[0] : data[0] || null);
       } catch {}
     }
   }, []);
@@ -245,15 +365,13 @@ function NoticiaCard({ noticiasLeidas, marcarLeida }: { noticiasLeidas: string[]
     return (
       <div className="glass-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-3">
         <Newspaper size={16} className="text-white/20 shrink-0" />
-        <p className="text-sm text-white/30 font-medium">Sin noticias cargadas</p>
-        <button onClick={() => navigate('/intel')} className="ml-auto text-[9px] text-primary/60 hover:text-primary font-bold transition-colors">
+        <p className="text-sm text-white/30 font-medium flex-1">Sin noticias cargadas</p>
+        <button onClick={() => navigate('/intel')} className="text-[9px] text-primary/60 hover:text-primary font-bold transition-colors">
           Ver Intel →
         </button>
       </div>
     );
   }
-
-  const leida = noticiasLeidas.includes(noticia.id);
 
   return (
     <motion.div
@@ -266,11 +384,9 @@ function NoticiaCard({ noticiasLeidas, marcarLeida }: { noticiasLeidas: string[]
         <div className="flex items-center gap-2">
           <Newspaper size={13} className="text-amber-400" />
           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Noticia del día</span>
-          {leida && <span className="text-[8px] text-white/20 font-bold uppercase">(leída)</span>}
+          {noticiasLeidas.includes(noticia.id) && <span className="text-[8px] text-white/20 font-bold">(leída)</span>}
         </div>
-        <button onClick={() => navigate('/intel')} className="text-[9px] text-primary/60 hover:text-primary font-bold transition-colors">
-          Intel →
-        </button>
+        <button onClick={() => navigate('/intel')} className="text-[9px] text-primary/60 hover:text-primary font-bold transition-colors">Intel →</button>
       </div>
       <p className="text-sm font-bold leading-snug line-clamp-2">{noticia.titulo}</p>
       <div className="flex items-center justify-between">
@@ -280,7 +396,7 @@ function NoticiaCard({ noticiasLeidas, marcarLeida }: { noticiasLeidas: string[]
             marcarLeida(noticia.id);
             hablarTexto(`${noticia.titulo}. ${noticia.resumen || ''}`);
           }}
-          className="text-[9px] font-black uppercase tracking-widest text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg hover:bg-amber-400/20 transition-colors flex items-center gap-1"
+          className="text-[9px] font-black uppercase tracking-widest text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg hover:bg-amber-400/20 transition-colors"
         >
           ▶ Audio
         </button>
