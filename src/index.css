@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --accent-main: #7C3AED;
+  --accent-10: #7C3AED1A;
+  --accent-20: #7C3AED33;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-accent: var(--accent-main);
+  --color-primary: var(--accent-main);
+  --color-accent-gold: #fbbf24;
+  --color-surface: #0a0a0a;
+  --color-surface-lighter: #1a1a1a;
+  --color-border-subtle: var(--accent-20);
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-white font-sans antialiased;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0px;
+  }
+}
+
+.glass-card {
+  @apply bg-surface-lighter/50 backdrop-blur-md border border-border-subtle rounded-2xl;
+}
+
+.premium-gradient {
+  background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%);
+}
+
+.gold-text {
+  @apply text-accent-gold font-semibold;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+}
