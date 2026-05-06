@@ -4,11 +4,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BottomNav } from '../Navigation/BottomNav';
 import { QuickActions } from '../Navigation/QuickActions';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import FloatingMicButton from '../FloatingMicButton';
+import BriefingMatutino, { useBriefing } from '../BriefingMatutino';
+import { AnimatePresence as AP } from 'motion/react';
 
 export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+  const { mostrar, cerrar } = useBriefing();
 
   useEffect(() => {
     if (!profile.onboardingCompleto && location.pathname !== '/onboarding') {
@@ -51,7 +55,12 @@ export function MainLayout() {
         </AnimatePresence>
       </main>
       <QuickActions />
+      <FloatingMicButton />
       <BottomNav />
+
+      <AP>
+        {mostrar && <BriefingMatutino onClose={cerrar} />}
+      </AP>
     </div>
   );
 }

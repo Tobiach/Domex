@@ -1,317 +1,290 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { 
-  ArrowUpRight, 
-  TrendingUp, 
-  Wallet, 
-  CheckCircle2, 
-  Lightbulb, 
-  TrendingDown, 
-  Play, 
-  Zap, 
-  Target, 
-  Star,
-  ChevronRight,
-  Newspaper,
-  Volume2,
-  Loader2
+import {
+  Target, TrendingUp, TrendingDown, Zap,
+  Newspaper, Calendar, ChevronRight, Check
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useUserProfile } from '../hooks/useUserProfile';
+import { useStreaks, calcScore } from '../hooks/useStreaks';
 import { cn } from '../lib/utils';
-import { format } from 'date-fns';
+import { hablarTexto } from '../services/voiceService';
+import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { hablarConCallback } from '../services/voiceService';
-import DomexInsight from '../components/DomexInsight';
+
+function ScoreCircle({ score }: { score: number }) {
+  const r = 18;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color = score >= 90 ? '#10B981' : score >= 70 ? '#F59E0B' : '#F43F5E';
+  return (
+    <svg width="44" height="44" viewBox="0 0 44 44">
+      <circle cx="22" cy="22" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+      <circle
+        cx="22" cy="22" r={r} fill="none"
+        stroke={color} strokeWidth="3"
+        strokeDasharray={`${dash} ${circ}`}
+        strokeLinecap="round"
+        transform="rotate(-90 22 22)"
+        style={{ transition: 'stroke-dasharray 0.6s ease' }}
+      />
+      <text x="22" y="26" textAnchor="middle" fontSize="10" fontWeight="900" fill="white">{score}</text>
+    </svg>
+  );
+}
+
+function HoraNow() {
+  const [hora, setHora] = useState(() => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
+  useEffect(() => {
+    const id = setInterval(() => setHora(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })), 30000);
+    return () => clearInterval(id);
+  }, []);
+  return <span>{hora}</span>;
+}
+
+function saludo(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días';
+  if (h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
 
 export default function Dashboard() {
-  const { usuario, tareas, noticias } = useApp();
+  const { tareas, mercado, agenda, noticiasLeidas, marcarNoticiaLeida, alternarTarea } = useApp();
   const { profile } = useUserProfile();
-  const [estaReproduciendo, setEstaReproduciendo] = useState(false);
+  const streak = useStreaks();
+  const navigate = useNavigate();
 
-  const tareasFoco = tareas
-    .filter(t => t.esFoco && !t.completada)
-    .slice(0, profile.goals.tareasFocoDiarias);
+  const tareasFoco = tareas.filter(t => t.esFoco && !t.completada).slice(0, 3);
+  const tareasCompletadas = tareas.filter(t => t.completada).length;
+  const score = calcScore(tareasCompletadas, tareas.length, noticiasLeidas.length);
 
-  const totalTareasHoy = tareas.length;
-  const completadasHoy = tareas.filter(t => t.completada).length;
-  const progresoPorcentaje = totalTareasHoy > 0 ? (completadasHoy / totalTareasHoy) * 100 : 0;
+  const btc = mercado.find(m => m.simbolo === 'BTC');
+  const eth = mercado.find(m => m.simbolo === 'ETH');
 
-  const manejarResumenAudio = (textoPersonalizado?: string) => {
-    if (estaReproduciendo) return;
-    const texto = textoPersonalizado || `${profile.identity.saludo} ${profile.identity.nombre}. Hoy tenés ${tareasFoco.length} tareas clave de las ${profile.goals.tareasFocoDiarias} que te propusiste. Tu balance es de ${usuario.balance} ${profile.goals.moneda}. Sigamos avanzando.`;
-    hablarConCallback(texto, () => setEstaReproduciendo(true), () => setEstaReproduciendo(false));
-  };
+  const ahora = new Date();
+  const proximaReunion = agenda
+    .filter(a => new Date(`${a.fecha}T${a.hora}`) > ahora)
+    .sort((a, b) => new Date(`${a.fecha}T${a.hora}`).getTime() - new Date(`${b.fecha}T${b.hora}`).getTime())[0];
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: profile.goals.moneda,
-      maximumFractionDigits: 0
-    }).format(val);
-  };
+  const enMenosde30min = proximaReunion
+    ? (new Date(`${proximaReunion.fecha}T${proximaReunion.hora}`).getTime() - ahora.getTime()) < 30 * 60000
+    : false;
+
+  const nombre = profile.identity.nombre || 'Domex';
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Encabezado Principal - Control Center Style */}
-      <header className="flex items-center justify-between py-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.4em]">{profile.identity.saludo} • ONLINE</p>
-          </div>
-          <h1 className="text-4xl font-black tracking-tighter text-white flex items-center gap-2">
-            Control <span className="text-primary">{profile.identity.nombre || 'Domex'}</span>
+    <div className="flex flex-col gap-3 pb-2">
+
+      {/* ── HEADER ── */}
+      <header className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">{saludo()}</p>
+          <h1 className="text-2xl font-black tracking-tight leading-none mt-0.5">
+            {nombre} <span className="text-primary">.</span>
           </h1>
         </div>
-        <motion.div 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="relative"
-        >
-          <div 
-             className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center font-black text-lg border border-white/10 shadow-2xl backdrop-blur-md overflow-hidden group"
-             style={{ color: 'var(--color-accent)' }}
-          >
-            <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-            {profile.identity.avatarUrl ? (
-              <img src={profile.identity.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span className="relative z-10 text-white/80 group-hover:text-white">{profile.identity.iniciales}</span>
-            )}
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-xl font-black tabular-nums"><HoraNow /></p>
+            <div className="flex items-center gap-1 justify-end">
+              <Zap size={10} className="text-amber-400" />
+              <p className="text-[10px] font-black text-amber-400">{streak} días</p>
+            </div>
           </div>
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full border-4 border-[#0A0A0F] flex items-center justify-center">
-             <div className="w-1 h-1 bg-white rounded-full" />
-          </div>
-        </motion.div>
+          <ScoreCircle score={score} />
+        </div>
       </header>
 
-      {/* Domex Insight (Conexión entre sistemas) */}
-      <DomexInsight />
-
-      {/* Grid de Estado Rápido - KPIs de Vida */}
-      <div className="grid grid-cols-2 gap-4">
-        <motion.div 
-          whileHover={{ y: -5 }}
-          className="glass-card p-5 border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-emerald-500/20 rounded-lg">
-              <TrendingUp size={16} className="text-emerald-500" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Capital</span>
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-xl font-black text-white">{formatCurrency(usuario.balance)}</h4>
-            <p className="text-[9px] text-white/30 font-bold uppercase tracking-tight">Meta: {formatCurrency(profile.goals.capitalObjetivo)}</p>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ y: -5 }}
-          className="glass-card p-5 border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-primary/20 rounded-lg">
-              <Target size={16} className="text-primary" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Foco</span>
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-2xl font-black text-white">{tareasFoco.length}<span className="text-sm text-white/30 font-medium">/{profile.goals.tareasFocoDiarias}</span></h4>
-            <p className="text-[10px] text-primary font-bold">Prioridades críticas</p>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Botón Resumen Auditivo - Rediseño Premium */}
-      <motion.button 
-        whileTap={{ scale: 0.98 }}
-        onClick={() => manejarResumenAudio()}
-        disabled={estaReproduciendo}
-        className="w-full relative group overflow-hidden"
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
-        <div className="relative z-10 glass-card p-1 rounded-3xl border-primary/20 flex items-center gap-4 group-hover:border-primary/40 transition-all">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-            {estaReproduciendo ? (
-               <div className="flex gap-1 items-end h-4">
-                 <motion.div animate={{ height: [4, 16, 8, 16, 4] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-1 bg-white rounded-full" />
-                 <motion.div animate={{ height: [8, 4, 16, 4, 8] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1 bg-white rounded-full" />
-                 <motion.div animate={{ height: [16, 8, 4, 8, 16] }} transition={{ repeat: Infinity, duration: 0.4 }} className="w-1 bg-white rounded-full" />
-               </div>
-            ) : <Volume2 size={24} className="text-white" />}
-          </div>
-          <div className="text-left flex-1 py-1">
-            <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary">Briefing de Inteligencia</h3>
-            <p className="text-[13px] text-white/80 font-bold mt-0.5">Escuchar análisis matutino</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[9px] text-white/30 font-medium italic uppercase tracking-widest">Domex AI • 2 min</span>
-            </div>
-          </div>
-          <ChevronRight size={20} className="mr-4 text-white/20 group-hover:text-primary transition-colors" />
-        </div>
-      </motion.button>
-
-      {/* Lo importante hoy (Noticias Inteligentes) */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between px-1">
+      {/* ── TAREAS FOCO ── */}
+      <section className="glass-card p-4 bg-white/[0.02] border-white/5 space-y-2">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <Newspaper size={18} className="text-amber-500" />
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/50">Lo importante hoy</h3>
+            <Target size={13} className="text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Importa hoy</span>
           </div>
-          <button 
-            onClick={() => manejarResumenAudio("Resumen de noticias: " + noticias.map(n => n.titulo).join('. '))}
-            className="text-[10px] font-black text-amber-500 bg-amber-500/10 px-2 py-1 rounded-lg flex items-center gap-1"
-          >
-            <Volume2 size={12} />
-            SÍNTESIS AUDIO
+          <button onClick={() => navigate('/tasks')} className="text-[10px] text-white/20 hover:text-white/50 transition-colors flex items-center gap-0.5">
+            Ver todas <ChevronRight size={10} />
           </button>
         </div>
 
-        <div className="grid gap-3">
-          {noticias.map((noticia, idx) => (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + idx * 0.1 }}
-              key={noticia.id}
-              className="glass-card p-4 bg-white/[0.02] border-white/5 flex gap-4"
+        {tareasFoco.length > 0 ? tareasFoco.map((t, i) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.06 }}
+            className="flex items-center gap-3 py-1.5"
+          >
+            <button
+              onClick={() => alternarTarea(t.id)}
+              className="w-5 h-5 rounded-md border-2 border-primary/30 flex items-center justify-center hover:border-primary transition-colors shrink-0"
             >
-              <div className={cn(
-                "w-1 h-auto rounded-full shrink-0",
-                noticia.categoria === 'mercado' ? "bg-emerald-500" :
-                noticia.categoria === 'economia' ? "bg-blue-500" : "bg-amber-500"
-              )} />
-              <div>
-                <h4 className="font-bold text-[14px] tracking-tight">{noticia.titulo}</h4>
-                <p className="text-xs text-white/40 font-medium mt-1 leading-relaxed line-clamp-2">
-                  {noticia.contenido}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              <div className="w-2 h-2 rounded-sm bg-primary opacity-0 hover:opacity-100 transition-opacity" />
+            </button>
+            <span className="text-sm font-medium leading-tight flex-1">{t.titulo}</span>
+            <span className={cn(
+              'text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md',
+              t.prioridad === 'alta' ? 'bg-red-500/20 text-red-400' :
+              t.prioridad === 'media' ? 'bg-amber-500/20 text-amber-400' :
+              'bg-white/10 text-white/30'
+            )}>{t.prioridad}</span>
+          </motion.div>
+        )) : (
+          <p className="text-xs text-emerald-400 font-medium py-1">Sin tareas críticas — día libre 🎯</p>
+        )}
       </section>
 
-      {/* Foco del Día (Psicología de 3 objetivos) */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Target size={18} className="text-accent" />
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/50">Foco del Día</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">
-              {completadasHoy} de {totalTareasHoy} completadas
-            </span>
-            <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${progresoPorcentaje}%` }}
-                className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
-              />
-            </div>
-          </div>
+      {/* ── FINANZAS + MERCADO ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="glass-card p-4 bg-white/[0.02] border-white/5">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">Capital</p>
+          <p className="text-lg font-black tabular-nums">
+            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: profile.goals.moneda, maximumFractionDigits: 0 }).format(0)}
+          </p>
+          <button onClick={() => navigate('/capital')} className="text-[9px] text-primary/60 hover:text-primary mt-1 transition-colors font-bold">
+            Ver finanzas →
+          </button>
         </div>
-        
-        <div className="space-y-3">
-          {tareasFoco.length > 0 ? tareasFoco.map((tarea, idx) => (
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              key={tarea.id} 
-              className="glass-card p-5 bg-white/[0.03] border-white/5 flex items-center justify-between group hover:border-primary/30 transition-all"
-            >
-              <div className="flex items-center gap-4">
-                <div className="text-primary/40 font-black text-lg">{idx + 1}</div>
-                <h4 className="font-bold text-[15px] tracking-tight group-hover:text-white transition-colors">{tarea.titulo}</h4>
+
+        <div className="glass-card p-4 bg-white/[0.02] border-white/5">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2">Mercado</p>
+          {btc && (
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[10px] font-black text-white/50">BTC</span>
+              <div className={cn('flex items-center gap-0.5 text-xs font-black', btc.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                {btc.cambio >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                {btc.cambio >= 0 ? '+' : ''}{btc.cambio}%
               </div>
-              <div className="w-6 h-6 rounded-lg border-2 border-primary/20 flex items-center justify-center group-hover:border-primary transition-all cursor-pointer">
-                <div className="w-2.5 h-2.5 rounded-sm bg-primary opacity-0 group-hover:opacity-100" />
-              </div>
-            </motion.div>
-          )) : (
-            <div className="glass-card p-6 bg-emerald-500/5 border-emerald-500/10 flex items-center gap-4">
-              <Star className="text-emerald-500" size={24} />
-              <p className="text-sm font-medium text-emerald-500/80">¡Foco completado! Tu claridad mental está al máximo.</p>
             </div>
           )}
+          {eth && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-black text-white/50">ETH</span>
+              <div className={cn('flex items-center gap-0.5 text-xs font-black', eth.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                {eth.cambio >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                {eth.cambio >= 0 ? '+' : ''}{eth.cambio}%
+              </div>
+            </div>
+          )}
+          <button onClick={() => navigate('/mercado')} className="text-[9px] text-primary/60 hover:text-primary mt-1.5 transition-colors font-bold block">
+            Ver mercado →
+          </button>
         </div>
-      </section>
-
-      {/* Métricas Vitales */}
-      <section className="grid grid-cols-2 gap-4">
-        <div className="glass-card p-5 bg-white/5 space-y-3">
-          <div className="flex items-center gap-2 text-rose-400">
-            <Zap size={16} />
-            <span className="text-[10px] font-black uppercase tracking-widest leading-none">Energía Vital</span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black">{usuario.energia}%</span>
-              <span className="text-[10px] text-white/20 font-bold uppercase">Nivel</span>
-            </div>
-            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${usuario.energia}%` }}
-                className="h-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" 
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="glass-card p-5 bg-white/5 space-y-3">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <TrendingUp size={16} />
-            <span className="text-[10px] font-black uppercase tracking-widest leading-none">Progreso</span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black">{usuario.progresoSemanal}%</span>
-              <span className="text-[10px] text-white/20 font-bold uppercase">Meta</span>
-            </div>
-            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${usuario.progresoSemanal}%` }}
-                className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Estado Financiero Compacto */}
-      <section className="space-y-4">
-         <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Wallet size={18} className="text-white/40" />
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/40">Capital Disponible</h3>
-          </div>
-          <ArrowUpRight size={18} className="text-white/20" />
-        </div>
-        <div className="glass-card p-6 bg-gradient-to-br from-white/5 to-transparent border-white/5">
-           <div className="flex justify-between items-end">
-            <div>
-              <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mb-1 italic">Balance de Operaciones</p>
-              <h2 className="text-4xl font-black tracking-tighter">${usuario.balance.toLocaleString()}</h2>
-            </div>
-            <div className="flex items-center gap-1 text-emerald-400 text-xs font-black bg-emerald-400/10 px-2 py-1 rounded-lg">
-              <TrendingUp size={12} />
-              <span>+12%</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer Motivacional */}
-      <div className="pt-4 flex flex-col items-center text-center space-y-2 opacity-30">
-        <div className="h-px w-20 bg-white/20" />
-        <p className="text-[9px] font-black uppercase tracking-[0.3em]">Domex Neuro-Link v4.5</p>
       </div>
+
+      {/* ── NOTICIA PRINCIPAL ── */}
+      <NoticiaCard noticiasLeidas={noticiasLeidas} marcarLeida={marcarNoticiaLeida} />
+
+      {/* ── PRÓXIMA REUNIÓN ── */}
+      {proximaReunion ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className={cn(
+            'glass-card p-4 border flex items-center gap-4',
+            enMenosde30min ? 'border-red-500/30 bg-red-500/5' : 'border-white/5 bg-white/[0.02]'
+          )}
+        >
+          <div className={cn('p-2 rounded-xl', enMenosde30min ? 'bg-red-500/20' : 'bg-blue-500/20')}>
+            <Calendar size={16} className={enMenosde30min ? 'text-red-400' : 'text-blue-400'} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-0.5">
+              {enMenosde30min ? '⚠ En menos de 30 min' : 'Próxima reunión'}
+            </p>
+            <p className="text-sm font-bold leading-tight truncate">{proximaReunion.titulo}</p>
+            <p className="text-[10px] text-white/40 mt-0.5">
+              {proximaReunion.hora}
+              {proximaReunion.personas.length > 0 && ` · ${proximaReunion.personas.join(', ')}`}
+            </p>
+          </div>
+          <button onClick={() => navigate('/more')} className="text-white/20 hover:text-white transition-colors">
+            <ChevronRight size={16} />
+          </button>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="glass-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-4"
+        >
+          <div className="p-2 rounded-xl bg-white/5">
+            <Calendar size={16} className="text-white/20" />
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-0.5">Agenda</p>
+            <p className="text-sm text-white/40 font-medium">Sin reuniones programadas</p>
+          </div>
+        </motion.div>
+      )}
     </div>
+  );
+}
+
+function NoticiaCard({ noticiasLeidas, marcarLeida }: { noticiasLeidas: string[], marcarLeida: (id: string) => void }) {
+  const navigate = useNavigate();
+  const [noticia, setNoticia] = useState<any>(null);
+
+  useEffect(() => {
+    const cached = localStorage.getItem('domex_news_cache');
+    if (cached) {
+      try {
+        const { data } = JSON.parse(cached);
+        const noLeidas = data.filter((n: any) => !noticiasLeidas.includes(n.id));
+        if (noLeidas.length > 0) setNoticia(noLeidas[0]);
+        else if (data.length > 0) setNoticia(data[0]);
+      } catch {}
+    }
+  }, []);
+
+  if (!noticia) {
+    return (
+      <div className="glass-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-3">
+        <Newspaper size={16} className="text-white/20 shrink-0" />
+        <p className="text-sm text-white/30 font-medium">Sin noticias cargadas</p>
+        <button onClick={() => navigate('/intel')} className="ml-auto text-[9px] text-primary/60 hover:text-primary font-bold transition-colors">
+          Ver Intel →
+        </button>
+      </div>
+    );
+  }
+
+  const leida = noticiasLeidas.includes(noticia.id);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="glass-card p-4 border border-white/5 bg-white/[0.02] space-y-2"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Newspaper size={13} className="text-amber-400" />
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Noticia del día</span>
+          {leida && <span className="text-[8px] text-white/20 font-bold uppercase">(leída)</span>}
+        </div>
+        <button onClick={() => navigate('/intel')} className="text-[9px] text-primary/60 hover:text-primary font-bold transition-colors">
+          Intel →
+        </button>
+      </div>
+      <p className="text-sm font-bold leading-snug line-clamp-2">{noticia.titulo}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-white/30">{noticia.fuente}</p>
+        <button
+          onClick={() => {
+            marcarLeida(noticia.id);
+            hablarTexto(`${noticia.titulo}. ${noticia.resumen || ''}`);
+          }}
+          className="text-[9px] font-black uppercase tracking-widest text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg hover:bg-amber-400/20 transition-colors flex items-center gap-1"
+        >
+          ▶ Audio
+        </button>
+      </div>
+    </motion.div>
   );
 }

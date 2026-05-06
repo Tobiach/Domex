@@ -147,6 +147,31 @@ export interface UserProfile {
   onboardingCompleto: boolean;
 }
 
+export interface Agenda {
+  id: string;
+  titulo: string;
+  personas: string[];
+  fecha: string;
+  hora: string;
+  contexto?: string;
+  tipo: 'reunion' | 'recordatorio' | 'evento';
+}
+
+export interface VoiceProcessorResult {
+  tipo: 'tarea' | 'reunion' | 'gasto' | 'idea' | 'nota';
+  titulo: string;
+  detalles: {
+    fecha?: string;
+    hora?: string;
+    monto?: number;
+    personas?: string[];
+    contexto?: string;
+    categoria?: string;
+  };
+  prioridad: 'alta' | 'normal' | 'baja';
+  confianza: number;
+}
+
 export const DEFAULT_PROFILE: UserProfile = {
   identity: {
     nombre: '',

@@ -1,23 +1,25 @@
 import React, { createContext, useContext, useState } from 'react';
-import { 
-  PerfilUsuario, 
-  Idea, 
-  Tarea, 
-  Habito, 
-  Transaccion, 
-  ActivoMercado, 
-  ContactoCRM, 
+import {
+  PerfilUsuario,
+  Idea,
+  Tarea,
+  Habito,
+  Transaccion,
+  ActivoMercado,
+  ContactoCRM,
   Mensaje,
   EstadoIdea,
   Noticia,
   Habilidad,
-  Objetivo
+  Objetivo,
+  Agenda
 } from '../types';
 
 type EntradaIdea = Omit<Idea, 'id' | 'creadoEn'>;
 type EntradaTarea = Omit<Tarea, 'id' | 'completada'>;
 type EntradaTransaccion = Omit<Transaccion, 'id' | 'fecha'>;
 type EntradaContacto = Omit<ContactoCRM, 'id'>;
+type EntradaAgenda = Omit<Agenda, 'id'>;
 
 interface AppContextType {
   usuario: PerfilUsuario;
@@ -40,6 +42,10 @@ interface AppContextType {
   agregarMensaje: (mensaje: Mensaje) => void;
   agregarContacto: (contacto: EntradaContacto) => void;
   actualizarEstadoContacto: (id: string, estado: ContactoCRM['estado']) => void;
+  agenda: Agenda[];
+  agregarAgenda: (item: EntradaAgenda) => void;
+  noticiasLeidas: string[];
+  marcarNoticiaLeida: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -134,6 +140,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     { id: '3', nombre: 'Roberto Gómez', empresa: 'Global S.A.', estado: 'ganado', valor: 12000 },
   ]);
 
+  const [agenda, setAgenda] = useState<Agenda[]>(() => {
+    try { return JSON.parse(localStorage.getItem('domex_agenda') || '[]'); } catch { return []; }
+  });
+
+  const [noticiasLeidas, setNoticiasLeidas] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('domex_noticias_leidas') || '[]'); } catch { return []; }
+  });
+
   const [mensajes, setMensajes] = useState<Mensaje[]>([
     { id: '1', rol: 'asistente', contenido: 'Hola, soy **Domex AI**. Tu centro de control está listo. ¿Qué vamos a optimizar hoy?', timestamp: new Date().toISOString() }
   ]);
@@ -174,11 +188,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setContactos(contactos.map(c => c.id === id ? { ...c, estado } : c));
   };
 
+  const agregarAgenda = (item: EntradaAgenda) => {
+    const nuevo = { ...item, id: Date.now().toString() };
+    const updated = [...agenda, nuevo].sort((a, b) => {
+      const da = new Date(`${a.fecha}T${a.hora}`).getTime();
+      const db = new Date(`${b.fecha}T${b.hora}`).getTime();
+      return da - db;
+    });
+    setAgenda(updated);
+    localStorage.setItem('domex_agenda', JSON.stringify(updated));
+  };
+
+  const marcarNoticiaLeida = (id: string) => {
+    if (noticiasLeidas.includes(id)) return;
+    const updated = [...noticiasLeidas, id];
+    setNoticiasLeidas(updated);
+    localStorage.setItem('domex_noticias_leidas', JSON.stringify(updated));
+  };
+
   return (
     <AppContext.Provider value={{ 
       usuario, ideas, tareas, habitos, transacciones, mercado, contactos, mensajes, noticias, habilidades, objetivos,
       agregarIdea, actualizarEstadoIdea, agregarTarea, alternarTarea, alternarFoco, agregarTransaccion, agregarMensaje,
-      agregarContacto, actualizarEstadoContacto 
+      agregarContacto, actualizarEstadoContacto,
+      agenda, agregarAgenda, noticiasLeidas, marcarNoticiaLeida
     }}>
       {children}
     </AppContext.Provider>
