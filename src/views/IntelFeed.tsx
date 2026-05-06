@@ -19,10 +19,8 @@ import { NewsItem } from '../types';
 import { cn } from '../lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { callGroqFast } from '../services/groqService';
 
 type Categoria = 'TODOS' | 'IA' | 'MERCADO' | 'CRIPTO' | 'PODER';
 
@@ -73,12 +71,8 @@ export default function IntelFeed() {
       
       Respondé SOLO con los bullets, empezando con •`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
-        contents: prompt
-      });
-
-      setBriefing(response.text || 'No se pudo generar el briefing en este momento.');
+      const text = await callGroqFast([{ role: 'user', content: prompt }], { maxTokens: 512 });
+      setBriefing(text || 'No se pudo generar el briefing en este momento.');
     } catch (error) {
       console.error('Error generando briefing:', error);
       setBriefing('• Hubo un error al procesar las noticias recientes.');

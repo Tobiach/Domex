@@ -15,9 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { cn } from '../../lib/utils';
-import { GoogleGenAI } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { callGroqFast } from '../../services/groqService';
 
 interface Props {
   onClose: () => void;
@@ -80,11 +78,8 @@ export default function SmartIdeaForm({ onClose }: Props) {
       Input: Título: ${formData.titulo}, Descripción: ${formData.descripcion}.
       Output: Devuelve un JSON estrictamente con: { "titulo": "Título Ganador", "descripcion": "Descripción estratégica corta", "valorEstimado": 10000, "potencial": 2000 }. No incluyas markdown, solo el JSON.`;
       
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt
-      });
-      const data = JSON.parse(response.text.replace(/```json|```/g, '').trim());
+      const text = await callGroqFast([{ role: 'user', content: prompt }], { maxTokens: 256, temperature: 0.3 });
+      const data = JSON.parse(text.replace(/```json|```/g, '').trim());
       
       setFormData(prev => ({
         ...prev,

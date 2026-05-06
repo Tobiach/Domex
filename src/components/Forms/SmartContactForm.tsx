@@ -15,9 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { cn } from '../../lib/utils';
-import { GoogleGenAI } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { callGroqFast } from '../../services/groqService';
 
 interface Props {
   onClose: () => void;
@@ -42,11 +40,8 @@ export default function SmartContactForm({ onClose }: Props) {
       Estima un valor de contrato realista (un número entre 500 y 50000) y sugiere un estado (prospecto, contactado, negociacion, ganado).
       Devuelve solo un JSON: { "valor": 5000, "estado": "prospecto" }`;
       
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt
-      });
-      const data = JSON.parse(response.text.replace(/```json|```/g, '').trim());
+      const text = await callGroqFast([{ role: 'user', content: prompt }], { maxTokens: 64, temperature: 0.2 });
+      const data = JSON.parse(text.replace(/```json|```/g, '').trim());
       
       setFormData(prev => ({
         ...prev,

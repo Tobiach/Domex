@@ -13,9 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { cn } from '../../lib/utils';
-import { GoogleGenAI } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { callGroqFast } from '../../services/groqService';
 
 interface Props {
   onClose: () => void;
@@ -37,11 +35,8 @@ export default function SmartTaskForm({ onClose }: Props) {
     if (!formData.titulo) return;
     setLoadingIA(true);
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Analiza esta tarea: "${formData.titulo}". Clasifica su prioridad como "baja", "media" o "alta" basado en urgencia estratégica. Devuelve solo la palabra.`,
-      });
-      const prio = response.text?.trim().toLowerCase();
+      const text = await callGroqFast([{ role: 'user', content: `Analiza esta tarea: "${formData.titulo}". Clasifica su prioridad como "baja", "media" o "alta" basado en urgencia estratégica. Devuelve solo la palabra.` }], { maxTokens: 10, temperature: 0.1 });
+      const prio = text.trim().toLowerCase();
       if (prio && ['baja', 'media', 'alta'].includes(prio)) {
         setFormData(prev => ({ ...prev, prioridad: prio as any }));
       }

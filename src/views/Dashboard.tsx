@@ -21,7 +21,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { sintetizarVoz, reproducirAudio } from '../services/voiceService';
+import { hablarConCallback } from '../services/voiceService';
 import DomexInsight from '../components/DomexInsight';
 
 export default function Dashboard() {
@@ -32,22 +32,15 @@ export default function Dashboard() {
   const tareasFoco = tareas
     .filter(t => t.esFoco && !t.completada)
     .slice(0, profile.goals.tareasFocoDiarias);
-    
+
   const totalTareasHoy = tareas.length;
   const completadasHoy = tareas.filter(t => t.completada).length;
   const progresoPorcentaje = totalTareasHoy > 0 ? (completadasHoy / totalTareasHoy) * 100 : 0;
 
-  const manejarResumenAudio = async (textoPersonalizado?: string) => {
+  const manejarResumenAudio = (textoPersonalizado?: string) => {
     if (estaReproduciendo) return;
-    setEstaReproduciendo(true);
-    
-    const textoAReproducir = textoPersonalizado || `${profile.identity.saludo} ${profile.identity.nombre}. Hoy tienes ${tareasFoco.length} tareas clave de las ${profile.goals.tareasFocoDiarias} que te propusiste. Tu balance es de ${usuario.balance} ${profile.goals.moneda} y la energía vital está al ${usuario.energia} por ciento. Sigamos avanzando.`;
-    
-    const audioBase64 = await sintetizarVoz(textoAReproducir);
-    if (audioBase64) {
-      await reproducirAudio(audioBase64);
-    }
-    setEstaReproduciendo(false);
+    const texto = textoPersonalizado || `${profile.identity.saludo} ${profile.identity.nombre}. Hoy tenés ${tareasFoco.length} tareas clave de las ${profile.goals.tareasFocoDiarias} que te propusiste. Tu balance es de ${usuario.balance} ${profile.goals.moneda}. Sigamos avanzando.`;
+    hablarConCallback(texto, () => setEstaReproduciendo(true), () => setEstaReproduciendo(false));
   };
 
   const formatCurrency = (val: number) => {

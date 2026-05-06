@@ -15,9 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { cn } from '../../lib/utils';
-import { GoogleGenAI } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { callGroqFast } from '../../services/groqService';
 
 interface Props {
   onClose: () => void;
@@ -43,11 +41,8 @@ export default function SmartCapitalForm({ onClose }: Props) {
     if (!formData.descripcion) return;
     setLoadingIA(true);
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Analiza este movimiento financiero: "${formData.descripcion}". Clasifícalo en una de estas categorías: ${categoriasSugeridas.join(', ')}. Devuelve solo el nombre de la categoría.`,
-      });
-      const cat = response.text?.trim();
+      const text = await callGroqFast([{ role: 'user', content: `Analiza este movimiento financiero: "${formData.descripcion}". Clasifícalo en una de estas categorías: ${categoriasSugeridas.join(', ')}. Devuelve solo el nombre de la categoría.` }], { maxTokens: 20, temperature: 0.1 });
+      const cat = text.trim();
       if (cat) {
         setFormData(prev => ({ ...prev, categoria: cat }));
       }

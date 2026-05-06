@@ -1,29 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Sparkles, 
-  Loader2, 
-  X, 
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  Loader2,
+  X,
   Trash2,
   Mic,
   MicOff,
   Volume2
 } from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useNavigate } from 'react-router-dom';
-import { sintetizarVoz, reproducirAudio } from '../services/voiceService';
+import { hablarTexto } from '../services/voiceService';
 import { useUserProfile } from '../hooks/useUserProfile';
+import { callGroq } from '../services/groqService';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// Speech Recognition Type Definition
 interface IWindow extends Window {
   SpeechRecognition: any;
   webkitSpeechRecognition: any;
@@ -35,31 +32,25 @@ export default function DomexAI() {
   const [input, setInput] = useState('');
   const [estaEscribiendo, setEstaEscribiendo] = useState(false);
   const [estaEscuchando, setEstaEscuchando] = useState(false);
-  const [estaHablando, setEstaHablando] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     const { SpeechRecognition, webkitSpeechRecognition } = window as unknown as IWindow;
     const SpeechRecognitionClass = SpeechRecognition || webkitSpeechRecognition;
-    
+
     if (SpeechRecognitionClass) {
       const recognition = new SpeechRecognitionClass();
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'es-ES';
-
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
+        setInput(event.results[0][0].transcript);
         setEstaEscuchando(false);
       };
-
       recognition.onerror = () => setEstaEscuchando(false);
       recognition.onend = () => setEstaEscuchando(false);
-
       recognitionRef.current = recognition;
     }
   }, []);
@@ -81,73 +72,49 @@ export default function DomexAI() {
     };
 
     agregarMensaje(mensajeUsuario);
+    const inputActual = input;
     setInput('');
     setEstaEscribiendo(true);
 
     try {
-      const contextoSistema = `
-        Eres Domex AI, el "Cerebro" de un sistema de control total para emprendedores desarrollado por Domex.
-        Tu tono es profesional, premium, directo y analítico, similar a ChatGPT pero especializado en gestión estratégica.
-        Usa emojis de forma moderada y profesional para estructurar la información.
-        Usa negritas (**texto**) y listas para que las respuestas sean fáciles de leer.
-        Responde SIEMPRE en español.
-        
-        Contexto del usuario actual:
-        - Nombre: ${profile.identity.nombre || usuario.nombre}
-        - Balance: ${usuario.balance} ${profile.goals.moneda}
-        - Tareas foco configuradas: ${profile.goals.tareasFocoDiarias}
-        - Tareas actuales: ${tareas.filter(t => !t.completada).map(t => t.titulo).join(', ')}
-        - Ideas en proyecto: ${ideas.map(i => i.titulo).join(', ')}
-        
-        Tu objetivo es ayudar al usuario a ordenar sus ideas, sugerir acciones y ser su compañero estratégico.
-      `;
+      const sistemPrompt = `Eres Domex AI, el asistente estratégico personal del sistema Domex.
+Tu tono es profesional, directo y analítico. Usás negritas y listas para estructurar bien.
+Respondés SIEMPRE en español. Sos conciso y útil, como un socio de negocios senior.
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [
-          ...mensajes.map(m => ({ role: m.rol === 'usuario' ? 'user' : 'model', parts: [{ text: m.contenido }] })),
-          { role: 'user', parts: [{ text: input }] }
-        ],
-        config: {
-          systemInstruction: contextoSistema
-        }
-      });
+Contexto del usuario:
+- Nombre: ${profile.identity.nombre || usuario.nombre}
+- Balance: ${usuario.balance} ${profile.goals.moneda}
+- Tareas pendientes: ${tareas.filter(t => !t.completada).map(t => t.titulo).join(', ')}
+- Ideas activas: ${ideas.map(i => i.titulo).join(', ')}`;
 
-      const text = response.text;
+      const historial = mensajes.slice(-10).map(m => ({
+        role: m.rol === 'usuario' ? 'user' as const : 'assistant' as const,
+        content: m.contenido
+      }));
 
-      const mensajeAI = {
+      const text = await callGroq([
+        { role: 'system', content: sistemPrompt },
+        ...historial,
+        { role: 'user', content: inputActual }
+      ]);
+
+      agregarMensaje({
         id: (Date.now() + 1).toString(),
         rol: 'asistente' as const,
-        contenido: text || "Lo siento, tuve un problema procesando eso. ¿Puedes repetirlo?",
+        contenido: text || 'Error procesando la respuesta. Intentá de nuevo.',
         timestamp: new Date().toISOString()
-      };
-
-      agregarMensaje(mensajeAI);
-      
-      if (estaEscuchando || estaHablando) {
-        hablarMensaje(mensajeAI.contenido);
-      }
+      });
     } catch (error) {
       console.error(error);
       agregarMensaje({
         id: (Date.now() + 1).toString(),
         rol: 'asistente' as const,
-        contenido: "Error de conexión con el cerebro central. Reintentando...",
+        contenido: 'Error de conexión con Groq. Verificá la API key en Vercel.',
         timestamp: new Date().toISOString()
       });
     } finally {
       setEstaEscribiendo(false);
     }
-  };
-
-  const hablarMensaje = async (texto: string) => {
-    if (estaHablando) return;
-    setEstaHablando(true);
-    const audio64 = await sintetizarVoz(texto.replace(/[#*`]/g, ''));
-    if (audio64) {
-      reproducirAudio(audio64);
-    }
-    setEstaHablando(false);
   };
 
   const alternarEscucha = () => {
@@ -171,7 +138,7 @@ export default function DomexAI() {
             <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Neuro-Link Activo</p>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => navigate('/')}
           className="p-2 h-10 w-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
         >
@@ -199,8 +166,8 @@ export default function DomexAI() {
               </div>
               <div className={cn(
                 "px-4 py-3 rounded-2xl max-w-[85%] text-[15px] leading-relaxed shadow-sm relative group",
-                msg.rol === 'asistente' 
-                  ? "bg-white/[0.03] border border-white/5 text-white/90" 
+                msg.rol === 'asistente'
+                  ? "bg-white/[0.03] border border-white/5 text-white/90"
                   : "bg-primary text-white font-medium"
               )}>
                 <div className="markdown-content">
@@ -209,8 +176,8 @@ export default function DomexAI() {
                   </ReactMarkdown>
                 </div>
                 {msg.rol === 'asistente' && (
-                  <button 
-                    onClick={() => hablarMensaje(msg.contenido)}
+                  <button
+                    onClick={() => hablarTexto(msg.contenido)}
                     className="absolute -right-8 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-white transition-opacity opacity-0 group-hover:opacity-100"
                   >
                     <Volume2 size={16} />
@@ -220,7 +187,7 @@ export default function DomexAI() {
             </motion.div>
           ))}
         </AnimatePresence>
-        
+
         {estaEscribiendo && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -261,7 +228,7 @@ export default function DomexAI() {
             )}
           />
           <button
-            onClick={() => manejarEnvio()}
+            onClick={manejarEnvio}
             disabled={estaEscribiendo || !input.trim()}
             className={cn(
               "absolute right-2.5 w-10 h-10 flex items-center justify-center rounded-xl transition-all",
