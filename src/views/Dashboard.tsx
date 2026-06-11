@@ -15,23 +15,20 @@ function ScoreCircle({ score, onClick }: { score: number; onClick: () => void })
   const r = 22;
   const rOuter = 28;
   const circ = 2 * Math.PI * r;
-  const circOuter = 2 * Math.PI * rOuter;
   const dash = (score / 100) * circ;
-  const color = score >= 90 ? '#10B981' : score >= 70 ? 'var(--accent-main)' : '#FF6D28';
+  const color = score >= 90 ? 'var(--success)' : score >= 70 ? 'var(--honey-core)' : '#FF6D28';
   return (
     <button onClick={onClick} className="hover:opacity-80 transition-opacity relative group">
       <svg width="64" height="64" viewBox="0 0 64 64">
-        {/* Outer dashed decorative ring */}
-        <circle cx="32" cy="32" r={rOuter} fill="none" stroke="rgba(0,212,255,0.12)"
+        <circle cx="32" cy="32" r={rOuter} fill="none" stroke="rgba(201,148,26,0.12)"
           strokeWidth="1" strokeDasharray="2 5" />
-        {/* Secondary tick marks */}
         {[0, 60, 120, 180, 240, 300].map(deg => {
           const rad = (deg - 90) * Math.PI / 180;
           return (
             <line key={deg}
               x1={32 + (rOuter - 2) * Math.cos(rad)} y1={32 + (rOuter - 2) * Math.sin(rad)}
               x2={32 + (rOuter + 2) * Math.cos(rad)} y2={32 + (rOuter + 2) * Math.sin(rad)}
-              stroke="rgba(0,212,255,0.35)" strokeWidth="1"
+              stroke="rgba(201,148,26,0.35)" strokeWidth="1"
             />
           );
         })}
@@ -307,7 +304,7 @@ export default function Dashboard() {
           className={cn('bm-card p-4 flex items-center gap-4', enMenosde30min && 'border-red-500/30')}
           style={enMenosde30min ? { borderColor: 'rgba(239,68,68,0.3)' } : {}}
         >
-          <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', enMenosde30min ? 'bg-red-500/15' : 'bg-primary/10')}>
+          <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', enMenosde30min ? 'bg-red-500/15' : 'bg-[var(--violet-ghost)]')}>
             <Calendar size={15} className={enMenosde30min ? 'text-red-400' : 'text-primary'} />
           </div>
           <div className="flex-1 min-w-0">
@@ -342,16 +339,16 @@ export default function Dashboard() {
           { icon: Zap, label: 'ENERGÍA', val: energiaHoy ? `${energiaHoy.score}/10` : '—', sub: energiaHoy ? `${energiaHoy.factores.sueno}h sueño` : 'Sin check-in', color: '#F59E0B', path: '/conciencia/energia' },
         ];
         return (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {widgets.map(w => {
               const Icon = w.icon;
               return (
                 <button key={w.path} onClick={() => navigate(w.path)} className="bm-card p-3 text-left relative overflow-hidden" style={{ '--bm-accent': w.color } as React.CSSProperties}>
                   <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r" style={{ background: w.color }} />
-                  <Icon size={10} style={{ color: w.color }} className="mb-1.5" />
-                  <p className="text-[13px] font-black sys-value leading-none mb-0.5" style={{ color: w.val !== '—' ? 'white' : 'rgba(255,255,255,0.2)' }}>{w.val}</p>
-                  <span className="sys-label block" style={{ color: w.color, opacity: 1 }}>{w.label}</span>
-                  <span className="sys-label block mt-0.5">{w.sub}</span>
+                  <Icon size={11} style={{ color: w.color }} className="mb-1.5 ml-1" />
+                  <p className="text-[14px] font-black sys-value leading-none mb-0.5 ml-1" style={{ color: w.val !== '—' ? 'white' : 'rgba(255,255,255,0.2)' }}>{w.val}</p>
+                  <span className="sys-label block ml-1" style={{ color: w.color, opacity: 1 }}>{w.label}</span>
+                  <span className="sys-label block mt-0.5 ml-1">{w.sub}</span>
                 </button>
               );
             })}
