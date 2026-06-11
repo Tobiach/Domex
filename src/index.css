@@ -1,49 +1,46 @@
 @import "tailwindcss";
-
-:root {
-  --accent-main:      #D4900A;
-  --accent-secondary: #00D4FF;
-  --accent-warm:      #C45E00;
-  --accent-10:        #D4900A1A;
-  --accent-20:        #D4900A33;
-}
+@import "./styles/tokens.css";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", "Courier New", monospace;
-  --color-accent:        var(--accent-main);
-  --color-primary:       var(--accent-main);
-  --color-accent-gold:   #fbbf24;
-  --color-accent-orange: #C45E00;
-  --color-surface:       #120D04;
-  --color-surface-lighter: #1A1005;
-  --color-border-subtle: rgba(212,144,10,0.08);
+  --color-accent:        var(--honey-core);
+  --color-primary:       var(--violet-core);
+  --color-surface:       var(--bg-surface);
+  --color-border-subtle: var(--border-subtle);
 }
 
 @layer base {
   body {
-    background-color: #120D04;
-    @apply text-white font-sans antialiased;
+    background-color: var(--bg-primary);
+    font-family: var(--font-body);
+    @apply text-white antialiased;
     overflow-x: hidden;
   }
   ::-webkit-scrollbar { width: 0px; }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: var(--ls-title);
+    line-height: var(--lh-title);
+  }
 }
 
 /* ── GLASS CARD ── */
 .glass-card {
-  background: rgba(20, 12, 3, 0.90);
+  background: rgba(18,18,26,0.90);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(212,144,10,0.10);
-  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
 }
 
-/* ── HIVE CARD (ex bm-card) ── */
+/* ── SURFACE CARD (ex bm-card) ── */
 .bm-card {
   position: relative;
-  background: rgba(20, 12, 3, 0.95);
-  border: 1px solid rgba(212,144,10,0.08);
-  border-radius: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 .bm-card::before {
@@ -51,10 +48,10 @@
   position: absolute;
   top: 0; left: 0;
   width: 14px; height: 14px;
-  border-top: 1.5px solid var(--accent-main);
-  border-left: 1.5px solid var(--accent-main);
-  border-radius: 4px 0 0 0;
-  opacity: 0.7;
+  border-top: 1.5px solid var(--honey-core);
+  border-left: 1.5px solid var(--honey-core);
+  border-radius: var(--radius-md) 0 0 0;
+  opacity: 0.6;
   pointer-events: none;
   z-index: 1;
 }
@@ -63,10 +60,10 @@
   position: absolute;
   bottom: 0; right: 0;
   width: 14px; height: 14px;
-  border-bottom: 1.5px solid var(--accent-main);
-  border-right: 1.5px solid var(--accent-main);
-  border-radius: 0 0 4px 0;
-  opacity: 0.7;
+  border-bottom: 1.5px solid var(--honey-core);
+  border-right: 1.5px solid var(--honey-core);
+  border-radius: 0 0 var(--radius-md) 0;
+  opacity: 0.6;
   pointer-events: none;
   z-index: 1;
 }
@@ -74,11 +71,12 @@
 /* ── SYSTEM LABELS ── */
 .sys-label {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   font-weight: 700;
   text-transform: uppercase;
-  color: rgba(212,144,10,0.65);
+  color: var(--violet-soft);
+  opacity: 0.75;
 }
 .sys-value {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
@@ -90,13 +88,13 @@
 .live-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #D4900A;
-  box-shadow: 0 0 6px #D4900A, 0 0 16px rgba(212,144,10,0.5);
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success), 0 0 16px rgba(52,211,153,0.4);
   animation: live-pulse 2s ease-in-out infinite;
 }
-.live-dot-amber {
-  background: #C45E00;
-  box-shadow: 0 0 6px #C45E00, 0 0 16px rgba(196,94,0,0.5);
+.live-dot-honey {
+  background: var(--honey-core);
+  box-shadow: 0 0 6px var(--honey-core), 0 0 16px var(--honey-glow);
 }
 @keyframes live-pulse {
   0%,100% { opacity: 1; transform: scale(1); }
@@ -159,51 +157,49 @@
 /* ── HUD SEPARATOR ── */
 .hud-sep {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212,144,10,0.22), transparent);
-}
-.hud-sep-orange {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(196,94,0,0.3), transparent);
+  background: linear-gradient(90deg, transparent, var(--border-default), transparent);
 }
 
 /* ── GLOW TEXT ── */
-.glow-cyan {
-  color: #00D4FF;
-  text-shadow: 0 0 10px rgba(0,212,255,0.7), 0 0 24px rgba(0,212,255,0.3);
-}
 .glow-honey {
-  color: #D4900A;
-  text-shadow: 0 0 10px rgba(212,144,10,0.8), 0 0 28px rgba(212,144,10,0.35);
+  color: var(--honey-bright);
+  text-shadow: 0 0 10px rgba(201,148,26,0.8), 0 0 28px var(--honey-glow);
 }
-.glow-orange {
-  color: #C45E00;
-  text-shadow: 0 0 10px rgba(196,94,0,0.7), 0 0 24px rgba(196,94,0,0.3);
+.glow-violet {
+  color: var(--violet-soft);
+  text-shadow: 0 0 10px rgba(91,33,182,0.6), 0 0 24px rgba(91,33,182,0.25);
+}
+/* mantener glow-cyan para backward compat */
+.glow-cyan {
+  color: var(--info);
+  text-shadow: 0 0 10px rgba(96,165,250,0.6), 0 0 24px rgba(96,165,250,0.25);
 }
 
 /* ── HUD BUTTON ── */
 .hud-btn {
-  border: 1px solid rgba(212,144,10,0.2);
-  background: rgba(212,144,10,0.04);
-  color: #D4900A;
+  border: 1px solid var(--border-default);
+  background: var(--violet-ghost);
+  color: var(--violet-soft);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  transition: all 0.2s;
+  transition: all var(--duration-base) var(--ease-out);
 }
 .hud-btn:hover {
-  border-color: rgba(212,144,10,0.5);
-  background: rgba(212,144,10,0.10);
-  box-shadow: 0 0 14px rgba(212,144,10,0.18);
+  border-color: var(--violet-bright);
+  background: rgba(91,33,182,0.20);
+  box-shadow: var(--glow-violet);
 }
-.hud-btn-orange {
-  border-color: rgba(196,94,0,0.25);
-  background: rgba(196,94,0,0.05);
-  color: #C45E00;
+.hud-btn-honey {
+  border-color: rgba(201,148,26,0.25);
+  background: var(--honey-glow);
+  color: var(--honey-bright);
 }
-.hud-btn-orange:hover {
-  border-color: rgba(196,94,0,0.5);
-  background: rgba(196,94,0,0.12);
+.hud-btn-honey:hover {
+  border-color: var(--honey-core);
+  background: rgba(201,148,26,0.20);
+  box-shadow: var(--glow-honey);
 }
 
 /* ── BEE ANIMATIONS ── */
@@ -259,10 +255,55 @@
 
 /* ── PREMIUM ── */
 .premium-gradient {
-  background: linear-gradient(135deg, #D4900A 0%, #7A4500 100%);
+  background: linear-gradient(135deg, var(--honey-core) 0%, var(--amber-deep) 100%);
 }
-.gold-text { @apply text-accent-gold font-semibold; }
+.honey-text { color: var(--honey-bright); font-weight: 600; }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 24px); }
+
+/* ── SKELETON LOADER ── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-elevated) 50%, var(--bg-surface) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ── SURFACE ELEVATED ── */
+.surface { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.surface-elevated { background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+
+/* ── FAB (Floating Action Button) ── */
+.fab {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--honey-core);
+  box-shadow: var(--glow-honey);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.fab:active { transform: scale(0.94); }
+
+/* ── CHIP / TAG ── */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: var(--violet-ghost);
+  color: var(--violet-soft);
+  border: 1px solid rgba(91,33,182,0.20);
+}
+.chip-honey {
+  background: var(--honey-glow);
+  color: var(--honey-soft);
+  border-color: rgba(201,148,26,0.25);
+}
 
 /* ── MARKDOWN ── */
 .markdown-content { overflow-x: hidden; word-break: break-word; }

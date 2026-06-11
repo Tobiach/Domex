@@ -21,6 +21,12 @@ D30_RETENTION: [completar cuando haya data]
 - Resumen semanal automático día 7
 - Fallback Groq → OpenAI en downtime
 
+## PROTOCOLO DE ROLLBACK
+- Volver atrás: `git checkout main`
+- Restaurar desde tag: `git checkout v1-estable-pre-redesign`
+- Deploy de producción: NO tocar hasta aprobación explícita de Tobias
+- NO hacer merge a main sin confirmación explícita
+
 ## HISTORIAL DE SESIONES
 
 ### 2026-06-11 — Auditoría completa + fixes español + detección hora
