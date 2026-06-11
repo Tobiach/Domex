@@ -137,7 +137,6 @@ export function MainLayout() {
         </AnimatePresence>
       </main>
       <QuickActions />
-      <FloatingMicButton />
       <BottomNav />
 
       <AP>

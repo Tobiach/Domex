@@ -32,6 +32,9 @@ const OptimizacionHub  = lazy(() => import('./views/OptimizacionHub'));
 const DecisionLog      = lazy(() => import('./views/DecisionLog'));
 const Accountability   = lazy(() => import('./views/Accountability'));
 const LegacyBuilder    = lazy(() => import('./views/LegacyBuilder'));
+const Contexto         = lazy(() => import('./views/Contexto'));
+const Insights         = lazy(() => import('./views/Insights'));
+const Yo               = lazy(() => import('./views/Yo'));
 const Landing          = lazy(() => import('./views/Landing'));
 const Login            = lazy(() => import('./views/Login'));
 
@@ -77,6 +80,9 @@ export default function App() {
             <Route path="habilidades" element={<Suspense fallback={<PageLoader />}><Habilidades /></Suspense>} />
             <Route path="habitos"    element={<Suspense fallback={<PageLoader />}><Habitos /></Suspense>} />
             <Route path="settings"     element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
+            <Route path="contexto"     element={<Suspense fallback={<PageLoader />}><Contexto /></Suspense>} />
+            <Route path="insights"     element={<Suspense fallback={<PageLoader />}><Insights /></Suspense>} />
+            <Route path="yo"           element={<Suspense fallback={<PageLoader />}><Yo /></Suspense>} />
             <Route path="conciencia"   element={<Suspense fallback={<PageLoader />}><Conciencia /></Suspense>} />
             <Route path="conciencia/aprender" element={<Suspense fallback={<PageLoader />}><Aprendizaje /></Suspense>} />
             <Route path="conciencia/nutricion" element={<Suspense fallback={<PageLoader />}><Nutricion /></Suspense>} />

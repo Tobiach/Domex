@@ -76,6 +76,62 @@ const PRIORIDAD_CONFIG = {
   baja:  { label: 'NORMAL',  color: 'text-white/30',  bg: 'bg-white/5 border-white/10' },
 };
 
+function BriefingHeroCard({ onPlay }: { onPlay?: () => void }) {
+  const [escuchado] = useState(() => !!localStorage.getItem('domex_briefing_escuchado_' + new Date().toISOString().split('T')[0]));
+  const handlePlay = () => {
+    localStorage.setItem('domex_briefing_escuchado_' + new Date().toISOString().split('T')[0], '1');
+    onPlay?.();
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="rounded-2xl p-5 relative overflow-hidden"
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid rgba(201,148,26,0.18)',
+        boxShadow: '0 0 32px rgba(201,148,26,0.08)',
+      }}
+    >
+      {/* Glow background */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'radial-gradient(ellipse at 20% 50%, rgba(201,148,26,0.06) 0%, transparent 70%)',
+      }} />
+      <div className="flex items-center gap-4 relative">
+        {/* Botón play */}
+        <button
+          onClick={handlePlay}
+          className="flex-shrink-0 flex items-center justify-center rounded-full transition-all active:scale-95"
+          style={{
+            width: 56, height: 56,
+            background: escuchado ? 'var(--bg-elevated)' : 'var(--honey-core)',
+            boxShadow: escuchado ? 'none' : 'var(--glow-honey)',
+            border: escuchado ? '1px solid var(--border-default)' : 'none',
+          }}
+        >
+          <Volume2 size={22} style={{ color: escuchado ? 'var(--text-tertiary)' : 'var(--text-on-honey)' }} />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-base leading-snug" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+            Tu briefing de hoy
+          </p>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>30 seg · Lo que necesitás saber</p>
+          <span
+            className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-xs font-semibold"
+            style={{
+              background: escuchado ? 'var(--violet-ghost)' : 'var(--honey-glow)',
+              color: escuchado ? 'var(--violet-soft)' : 'var(--honey-soft)',
+            }}
+          >
+            {escuchado ? 'Escuchado ✓' : 'Nuevo'}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Dashboard() {
   const { tareas, mercado, agenda, noticiasLeidas, marcarNoticiaLeida, alternarTarea, balanceCalculado, learningCategories, learningLessons, mealEntries, memoryEntries, energyEntries } = useApp();
   const { profile } = useUserProfile();
@@ -108,7 +164,7 @@ export default function Dashboard() {
     ? (new Date(`${proximaReunion.fecha}T${proximaReunion.hora}`).getTime() - ahora.getTime()) < 30 * 60000
     : false;
 
-  const nombre = profile.identity.nombre || 'OPERADOR';
+  const nombre = profile.identity.nombre || 'Emprendedor';
 
   const completarTarea = (id: string) => {
     alternarTarea(id);
@@ -119,34 +175,28 @@ export default function Dashboard() {
   const graphData = historial.slice(-14).map(d => ({ dia: d.fecha.slice(5), score: d.score }));
 
   return (
-    <div className="flex flex-col gap-3 pb-2">
+    <div className="flex flex-col gap-4 pb-2">
 
       {/* ── HEADER ── */}
-      <header className="flex items-center justify-between pt-1">
-        <div>
-          <h1 className="text-[20px] font-black tracking-tight leading-none">
-            {saludo()},
-          </h1>
-          <h1 className="text-[22px] font-black tracking-tight leading-none glow-cyan">{nombre}</h1>
-          <div className="flex items-center gap-3 mt-2">
-            <div className="flex items-center gap-1.5">
-              <Zap size={9} style={{ color: 'var(--accent-secondary)' }} />
-              <span className="sys-label" style={{ color: 'var(--accent-secondary)', letterSpacing: '0.15em' }}>{streak}d RACHA</span>
-            </div>
+      <header className="pt-1">
+        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+          {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
+        <h1 className="text-2xl font-black tracking-tight mt-0.5" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+          {saludo()}, <span style={{ color: 'var(--honey-bright)' }}>{nombre}</span>
+        </h1>
+        <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-1.5">
+            <Zap size={10} style={{ color: 'var(--honey-core)' }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.08em' }}>{streak} días de racha</span>
           </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {onRepetirBriefing && (
-            <button onClick={onRepetirBriefing} className="w-9 h-9 bm-card flex items-center justify-center transition-all" title="Briefing">
-              <Volume2 size={13} style={{ color: 'var(--color-accent)' }} />
-            </button>
-          )}
-          <div className="flex flex-col items-end gap-1">
-            <p className="text-lg font-black tabular-nums sys-value glow-cyan"><HoraNow /></p>
-            <ScoreCircle score={score} onClick={() => setShowScoreBreakdown(true)} />
-          </div>
+          <div className="flex-1" />
+          <ScoreCircle score={score} onClick={() => setShowScoreBreakdown(true)} />
         </div>
       </header>
+
+      {/* ── BRIEFING HERO ── */}
+      <BriefingHeroCard onPlay={onRepetirBriefing} />
 
       {/* ── NEURAL ANALYSIS ── */}
       <div className="bm-card p-0.5">
