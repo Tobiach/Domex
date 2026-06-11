@@ -268,23 +268,32 @@ export default function Dashboard() {
 
         <div className="bm-card p-4">
           <span className="sys-label block mb-2">MERCADO</span>
-          {btc && (
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="sys-label" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>BTC</span>
-              <div className={cn('flex items-center gap-0.5 text-[11px] font-black sys-value', btc.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                {btc.cambio >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                {btc.cambio >= 0 ? '+' : ''}{btc.cambio}%
-              </div>
+          {!btc && !eth ? (
+            <div className="space-y-2">
+              <div className="skeleton h-4 w-24 rounded" />
+              <div className="skeleton h-4 w-20 rounded" />
             </div>
-          )}
-          {eth && (
-            <div className="flex items-center gap-1.5">
-              <span className="sys-label" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>ETH</span>
-              <div className={cn('flex items-center gap-0.5 text-[11px] font-black sys-value', eth.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                {eth.cambio >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                {eth.cambio >= 0 ? '+' : ''}{eth.cambio}%
-              </div>
-            </div>
+          ) : (
+            <>
+              {btc && (
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="sys-label" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>BTC</span>
+                  <div className={cn('flex items-center gap-0.5 text-[11px] font-black sys-value', btc.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                    {btc.cambio >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                    {btc.cambio >= 0 ? '+' : ''}{btc.cambio}%
+                  </div>
+                </div>
+              )}
+              {eth && (
+                <div className="flex items-center gap-1.5">
+                  <span className="sys-label" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>ETH</span>
+                  <div className={cn('flex items-center gap-0.5 text-[11px] font-black sys-value', eth.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                    {eth.cambio >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                    {eth.cambio >= 0 ? '+' : ''}{eth.cambio}%
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <button onClick={() => navigate('/mercado')} className="sys-label mt-2 block hover:opacity-70 transition-opacity" style={{ color: 'var(--color-accent)' }}>
             DETALLES →

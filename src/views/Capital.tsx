@@ -117,8 +117,12 @@ export default function Capital() {
 
         <div className="space-y-2">
           {transacciones.length === 0 ? (
-            <div className="bm-card p-5 text-center">
-              <span className="sys-label">SIN TRANSACCIONES REGISTRADAS</span>
+            <div className="bm-card p-8 text-center space-y-2">
+              <p className="text-3xl">💸</p>
+              <p className="font-bold text-sm" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Sin movimientos todavía</p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                Usá la voz: <span style={{ color: 'var(--honey-bright)' }}>"Gasto: almuerzo $2500"</span>
+              </p>
             </div>
           ) : transacciones.map((t) => (
             <motion.div

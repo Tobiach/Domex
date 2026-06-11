@@ -231,8 +231,10 @@ export default function Habitos() {
             🌱
           </div>
           <div className="text-center">
-            <p className="text-sm font-black uppercase tracking-widest text-white/30">Sin hábitos aún</p>
-            <p className="text-[10px] text-white/20 mt-1">Los grandes resultados empiezan con pequeños hábitos</p>
+            <p className="text-sm font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Sin hábitos todavía</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+              Decí <span style={{ color: 'var(--honey-bright)' }}>"Hábito: tomar agua al levantarme"</span>
+            </p>
           </div>
         </div>
       )}
