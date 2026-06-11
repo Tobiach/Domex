@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Zap, 
@@ -93,9 +93,9 @@ export default function Habilidades() {
           <Brain className="text-white" size={24} />
         </div>
         <div>
-          <h4 className="font-black text-xs uppercase tracking-widest text-primary mb-1">Análisis de Brecha Domex</h4>
+          <h4 className="font-black text-xs uppercase tracking-widest text-primary mb-1">Análisis de Brecha AIcolmena</h4>
           <p className="text-xs text-white/60 font-medium leading-relaxed">
-            Basado en tu pipeline de ideas, Domex sugiere fortalecer tus habilidades de **Ventas B2B** para acelerar la validación.
+            Basado en tu pipeline de ideas, AIcolmena sugiere fortalecer tus habilidades de **Ventas B2B** para acelerar la validación.
           </p>
         </div>
       </div>

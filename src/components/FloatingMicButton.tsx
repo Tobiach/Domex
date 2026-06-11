@@ -1,239 +1,286 @@
-import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Loader2, Check, X, HelpCircle } from 'lucide-react';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { motion } from 'motion/react';
+import { Mic, MicOff, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { procesarVoz, iniciarReconocimientoVoz } from '../services/voiceProcessor';
-import { VoiceProcessorResult } from '../types';
-import { cn } from '../lib/utils';
+import { useStreaks } from '../hooks/useStreaks';
+import { useVoiceEngine } from '../hooks/useVoiceEngine';
+import { VoicePanel } from './Voice/VoicePanel';
+import { hablarConCallback, detenerVoz, unlockAudio } from '../services/voiceService';
+import { UserContext, VoiceIntelligenceResult, DESTINO_ROUTES, CONFIDENCE_THRESHOLD } from '../services/voiceProcessor';
+import { logEvent } from '../services/eventLog';
 
-type Estado = 'idle' | 'escuchando' | 'procesando' | 'confirmando' | 'guardado' | 'error';
-
-const TIPO_LABELS: Record<string, string> = {
-  tarea: 'Tarea',
-  reunion: 'Reunión',
-  gasto: 'Gasto',
-  idea: 'Idea',
-  nota: 'Nota',
-};
-
-const TIPO_COLORS: Record<string, string> = {
-  tarea: 'bg-primary',
-  reunion: 'bg-blue-500',
-  gasto: 'bg-red-500',
-  idea: 'bg-amber-500',
-  nota: 'bg-emerald-500',
-};
+// ─── Floating Mic Button ─────────────────────────────────────────────────────
 
 export default function FloatingMicButton() {
-  const { agregarTarea, agregarAgenda, agregarTransaccion, agregarIdea } = useApp();
-  const [estado, setEstado] = useState<Estado>('idle');
-  const [resultado, setResultado] = useState<VoiceProcessorResult | null>(null);
-  const [toast, setToast] = useState('');
-  const stopRef = useRef<(() => void) | null>(null);
+  const {
+    tareas,
+    mercado,
+    agenda,
+    noticiasLeidas,
+    agregarTarea,
+    agregarAgenda,
+    agregarTransaccion,
+    agregarIdea,
+    agregarHabito,
+    agregarContacto,
+  } = useApp();
+  const streak = useStreaks();
+  const navigate = useNavigate();
 
-  const mostrarToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2500);
+  // Ref pattern: siempre refleja las actions más recientes sin re-crear el hook
+  const appActionsRef = useRef({
+    agregarTarea,
+    agregarAgenda,
+    agregarTransaccion,
+    agregarIdea,
+    agregarHabito,
+    agregarContacto,
+    navigate,
+  });
+  appActionsRef.current = {
+    agregarTarea,
+    agregarAgenda,
+    agregarTransaccion,
+    agregarIdea,
+    agregarHabito,
+    agregarContacto,
+    navigate,
   };
 
-  const iniciar = () => {
-    setEstado('escuchando');
-    const stop = iniciarReconocimientoVoz(
-      async (transcript) => {
-        setEstado('procesando');
-        try {
-          const res = await procesarVoz(transcript);
-          if (res.confianza >= 85) {
-            guardar(res);
-          } else {
-            setResultado(res);
-            setEstado('confirmando');
-          }
-        } catch {
-          setEstado('error');
-          setTimeout(() => setEstado('idle'), 2000);
-        }
-      },
-      () => {
-        if (estado === 'escuchando') setEstado('idle');
-      }
-    );
-    stopRef.current = stop;
-  };
-
-  const guardar = (res: VoiceProcessorResult) => {
+  const buildContext = (): UserContext => {
     const hoy = new Date().toISOString().split('T')[0];
+    const btc = mercado.find(m => m.simbolo === 'BTC');
+    const eth = mercado.find(m => m.simbolo === 'ETH');
+    const ahora = new Date();
+    return {
+      btcChange: btc?.cambio ?? 0,
+      ethChange: eth?.cambio ?? 0,
+      todayTasks: tareas
+        .filter(t => !t.completada && (t.esFoco || t.fechaVencimiento?.startsWith(hoy)))
+        .slice(0, 5)
+        .map(t => ({ titulo: t.titulo, prioridad: t.prioridad })),
+      streak,
+      nextMeetings: agenda
+        .filter(a => new Date(`${a.fecha}T${a.hora}`) > ahora)
+        .sort((a, b) =>
+          new Date(`${a.fecha}T${a.hora}`).getTime() -
+          new Date(`${b.fecha}T${b.hora}`).getTime()
+        )
+        .slice(0, 3)
+        .map(a => ({ title: a.titulo, time: a.hora })),
+      newsCount: noticiasLeidas.length,
+    };
+  };
 
-    switch (res.tipo) {
+  const { estado, transcriptLive, transcriptFinal, resultado, errorMsg, iniciar, cancelar, reintentar, dismissarExito } =
+    useVoiceEngine(buildContext);
+
+  const handleCancelar = useCallback(() => {
+    detenerVoz();
+    cancelar();
+  }, [cancelar]);
+
+  // Ejecuta las acciones en AppContext cuando la IA retorna un resultado exitoso
+  useEffect(() => {
+    if (estado !== 'success' || !resultado) return;
+
+    // TTS: panel se cierra al terminar de hablar
+    if (resultado.respuestaAlUsuario) {
+      hablarConCallback(resultado.respuestaAlUsuario, () => {}, () => dismissarExito(), 1.05);
+    } else {
+      dismissarExito();
+    }
+
+    if (resultado.tipo !== 'COMANDO') return;
+
+    // Si la confianza es muy baja, no ejecutamos el comando
+    if (resultado.confianza < CONFIDENCE_THRESHOLD) return;
+
+    logEvent('voz_usado', resultado.categoria);
+
+    const hoy = new Date().toISOString().split('T')[0];
+    const manana = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
+    const datos = resultado.datos ?? {};
+    const actions = appActionsRef.current;
+
+    switch (resultado.categoria) {
       case 'tarea':
-        agregarTarea({
-          titulo: res.titulo,
-          prioridad: res.prioridad === 'alta' ? 'alta' : res.prioridad === 'baja' ? 'baja' : 'media',
-          esFoco: res.prioridad === 'alta',
-          fechaVencimiento: res.detalles.fecha || hoy,
+        actions.agregarTarea({
+          titulo: datos.titulo ?? 'Tarea sin título',
+          prioridad: datos.prioridad === 'alta' ? 'alta' : datos.prioridad === 'baja' ? 'baja' : 'media',
+          esFoco: datos.prioridad === 'alta',
+          fechaVencimiento: datos.fecha ?? hoy,
         });
         break;
+
       case 'reunion':
-        agregarAgenda({
-          titulo: res.titulo,
-          personas: res.detalles.personas || [],
-          fecha: res.detalles.fecha || hoy,
-          hora: res.detalles.hora || '09:00',
-          contexto: res.detalles.contexto || undefined,
+        actions.agregarAgenda({
+          titulo: datos.titulo ?? 'Reunión',
+          personas: datos.personas ?? [],
+          fecha: datos.fecha ?? manana,
+          hora: datos.hora ?? '10:00',
+          contexto: datos.contexto ?? undefined,
           tipo: 'reunion',
         });
         break;
+
       case 'gasto':
-        agregarTransaccion({
+        actions.agregarTransaccion({
           tipo: 'gasto',
-          monto: res.detalles.monto || 0,
-          categoria: res.detalles.categoria || 'Otros',
-          descripcion: res.titulo,
+          monto: datos.monto ?? 0,
+          categoria: datos.contexto ?? 'Otros',
+          descripcion: datos.titulo ?? 'Gasto',
         });
         break;
+
+      case 'ingreso':
+        actions.agregarTransaccion({
+          tipo: 'ingreso',
+          monto: datos.monto ?? 0,
+          categoria: datos.contexto ?? 'Ventas',
+          descripcion: datos.titulo ?? 'Ingreso',
+        });
+        break;
+
       case 'idea':
-        agregarIdea({
-          titulo: res.titulo,
-          descripcion: res.detalles.contexto || res.titulo,
+      case 'nota':
+        actions.agregarIdea({
+          titulo: datos.titulo ?? 'Nueva idea',
+          descripcion: datos.contexto ?? datos.titulo ?? '',
           estado: 'idea',
         });
         break;
+
+      case 'habito':
+        actions.agregarHabito(
+          datos.titulo ?? 'Nuevo hábito',
+          datos.icono ?? '⚡'
+        );
+        break;
+
+      case 'crm':
+        actions.agregarContacto({
+          nombre: datos.titulo ?? datos.personas?.[0] ?? 'Contacto',
+          empresa: datos.empresa ?? datos.tag ?? '',
+          estado: 'prospecto',
+          valor: 0,
+        });
+        break;
+
+      case 'navegacion': {
+        const destino = datos.destino ?? '';
+        const ruta = DESTINO_ROUTES[destino] ?? null;
+        if (ruta) actions.navigate(ruta);
+        break;
+      }
     }
+  }, [estado, resultado]);
 
-    setResultado(null);
-    setEstado('guardado');
-    mostrarToast(`${TIPO_LABELS[res.tipo] || 'Item'} guardado`);
-    setTimeout(() => setEstado('idle'), 1500);
-  };
+  // ─── Estilo visual por estado ────────────────────────────────────────────────
 
-  const cancelar = () => {
-    stopRef.current?.();
-    setResultado(null);
-    setEstado('idle');
+  const BTN_STYLES = {
+    idle: {
+      bg: 'rgba(255,255,255,0.05)',
+      border: 'rgba(255,255,255,0.12)',
+      glow: undefined,
+      icon: 'rgba(255,255,255,0.5)',
+    },
+    listening: {
+      bg: 'rgba(239,68,68,0.12)',
+      border: 'rgba(239,68,68,0.55)',
+      glow: '0 0 22px rgba(239,68,68,0.38)',
+      icon: '#EF4444',
+    },
+    processing: {
+      bg: 'rgba(0,212,255,0.08)',
+      border: 'rgba(0,212,255,0.35)',
+      glow: '0 0 22px rgba(0,212,255,0.28)',
+      icon: 'var(--color-accent)',
+    },
+    success: {
+      bg: 'rgba(16,185,129,0.12)',
+      border: 'rgba(16,185,129,0.5)',
+      glow: '0 0 22px rgba(16,185,129,0.38)',
+      icon: '#10B981',
+    },
+    error: {
+      bg: 'rgba(239,68,68,0.08)',
+      border: 'rgba(239,68,68,0.3)',
+      glow: undefined,
+      icon: '#EF4444',
+    },
+  } as const;
+
+  const s = BTN_STYLES[estado];
+  const panelVisible = estado !== 'idle';
+
+  const handleButtonClick = () => {
+    if (estado === 'idle') {
+      // Desbloquear audio iOS en el primer tap (debe ser desde un gesto del usuario).
+      unlockAudio();
+      // Cancelar TTS antes de iniciar reconocimiento — iOS no puede usar
+      // reconocimiento de voz y síntesis de audio simultáneamente.
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      iniciar();
+    } else if (estado === 'listening') {
+      cancelar();
+    }
+    // otros estados: el usuario actúa sobre el panel
   };
 
   return (
     <>
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-emerald-500 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl shadow-lg flex items-center gap-2"
-          >
-            <Check size={14} />
-            {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <VoicePanel
+        visible={panelVisible}
+        estado={estado}
+        transcriptLive={transcriptLive}
+        transcriptFinal={transcriptFinal}
+        resultado={resultado}
+        errorMsg={errorMsg}
+        onCancelar={handleCancelar}
+        onReintentar={reintentar}
+      />
 
-      {/* Modal de confirmación */}
-      <AnimatePresence>
-        {estado === 'confirmando' && resultado && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 50, opacity: 0 }}
-              className="w-full max-w-sm bg-[#0F0F17] border border-white/10 rounded-3xl p-6 space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <HelpCircle size={20} className="text-amber-400" />
-                <p className="text-sm font-black text-white/60 uppercase tracking-widest">
-                  {resultado.confianza < 70 ? '¿Cómo clasifico esto?' : 'Confirmar'}
-                </p>
-              </div>
-
-              <p className="text-base font-bold leading-snug">{resultado.titulo}</p>
-
-              {resultado.confianza < 70 ? (
-                <div className="space-y-2">
-                  <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Elegí el tipo:</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {Object.entries(TIPO_LABELS).map(([tipo, label]) => (
-                      <button
-                        key={tipo}
-                        onClick={() => guardar({ ...resultado, tipo: tipo as any })}
-                        className={cn(
-                          'py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
-                          resultado.tipo === tipo
-                            ? cn(TIPO_COLORS[tipo], 'text-white')
-                            : 'bg-white/5 text-white/40 hover:bg-white/10'
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[9px] text-white/20 font-medium text-center pt-1">Confianza: {resultado.confianza}%</p>
-                </div>
-              ) : (
-                <>
-                  <div className={cn('px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest w-fit', TIPO_COLORS[resultado.tipo] || 'bg-primary')}>
-                    {TIPO_LABELS[resultado.tipo]}
-                  </div>
-                  {resultado.detalles.contexto && (
-                    <p className="text-sm text-white/40">{resultado.detalles.contexto}</p>
-                  )}
-                </>
-              )}
-
-              <div className="flex gap-3 pt-1">
-                <button
-                  onClick={cancelar}
-                  className="flex-1 py-3 rounded-2xl bg-white/5 text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                >
-                  <X size={14} />
-                  Cancelar
-                </button>
-                {resultado.confianza >= 70 && (
-                  <button
-                    onClick={() => guardar(resultado)}
-                    className="flex-grow py-3 rounded-2xl bg-primary text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Check size={14} />
-                    Guardar
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Botón flotante */}
+      {/* Botón flotante — 56px para cumplir con el mínimo táctil de 44pt iOS */}
       <motion.button
-        onClick={estado === 'idle' ? iniciar : estado === 'escuchando' ? cancelar : undefined}
-        whileTap={{ scale: 0.9 }}
-        className={cn(
-          'fixed bottom-24 right-4 z-30 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all',
-          estado === 'idle' && 'bg-white/10 border border-white/20 hover:bg-white/15',
-          estado === 'escuchando' && 'bg-red-500 shadow-red-500/40',
-          estado === 'procesando' && 'bg-primary',
-          estado === 'guardado' && 'bg-emerald-500',
-          estado === 'error' && 'bg-red-500/50',
-          (estado === 'confirmando') && 'hidden',
-        )}
+        onClick={handleButtonClick}
+        whileTap={{ scale: 0.88 }}
+        aria-label={estado === 'idle' ? 'Activar voz' : 'Detener voz'}
+        className="fixed bottom-[72px] right-4 z-50 w-14 h-14 rounded-full flex items-center justify-center"
+        style={{
+          background: s.bg,
+          border: `1px solid ${s.border}`,
+          boxShadow: s.glow,
+          transition: 'background 0.25s, border-color 0.25s, box-shadow 0.25s',
+        }}
       >
-        {estado === 'escuchando' && (
-          <motion.div
-            animate={{ scale: [1, 1.4, 1] }}
-            transition={{ repeat: Infinity, duration: 1.2 }}
-            className="absolute inset-0 rounded-full bg-red-500/40"
-          />
+        {/* Anillos de pulso — solo durante listening */}
+        {estado === 'listening' && (
+          <>
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{ background: 'rgba(239,68,68,0.18)' }}
+              animate={{ scale: [1, 1.65, 1], opacity: [0.7, 0, 0.7] }}
+              transition={{ duration: 1.15, repeat: Infinity }}
+            />
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{ background: 'rgba(239,68,68,0.08)' }}
+              animate={{ scale: [1, 2.2, 1], opacity: [0.4, 0, 0.4] }}
+              transition={{ duration: 1.15, repeat: Infinity, delay: 0.35 }}
+            />
+          </>
         )}
-        {estado === 'idle' && <Mic size={22} className="text-white/60" />}
-        {estado === 'escuchando' && <MicOff size={22} className="text-white" />}
-        {estado === 'procesando' && <Loader2 size={22} className="text-white animate-spin" />}
-        {estado === 'guardado' && <Check size={22} className="text-white" />}
-        {estado === 'error' && <X size={22} className="text-white" />}
+
+        {/* Ícono */}
+        <span className="relative z-10" style={{ color: s.icon, display: 'flex', alignItems: 'center' }}>
+          {estado === 'idle'       && <Mic size={22} />}
+          {estado === 'listening'  && <MicOff size={22} />}
+          {estado === 'processing' && <Loader2 size={22} className="animate-spin" />}
+          {estado === 'success'    && <CheckCircle2 size={22} />}
+          {estado === 'error'      && <AlertCircle size={22} />}
+        </span>
       </motion.button>
     </>
   );

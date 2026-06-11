@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, Globe, Search, ArrowUpRight, BarChart3, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -12,7 +12,7 @@ export default function Market() {
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-black tracking-tighter uppercase">Pulso de Mercado</h1>
-          <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] mt-1">Inteligencia Global Domex</p>
+          <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] mt-1">Inteligencia Global AIcolmena</p>
         </div>
         <div className="relative">
           <div className="absolute inset-0 bg-emerald-400 blur-xl opacity-20 animate-pulse" />
@@ -52,7 +52,7 @@ export default function Market() {
 
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1 italic">Precio Domex v4</p>
+                <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1 italic">Precio AIcolmena v4</p>
                 <h2 className="text-3xl font-black tracking-tighter">${activo.precio.toLocaleString()}</h2>
               </div>
               <BarChart3 className="text-white/10 group-hover:text-primary/40 transition-colors" size={32} />
@@ -72,7 +72,7 @@ export default function Market() {
         <div>
           <h4 className="font-black text-xs uppercase tracking-widest text-amber-500 mb-1">Análisis de Oportunidad</h4>
           <p className="text-xs text-white/60 font-medium leading-relaxed">
-            Se detectó una alta correlación entre **S&P 500** y tu **SaaS de Logística**. Domex recomienda revisar el posicionamiento de marca.
+            Se detectó una alta correlación entre **S&P 500** y tu **SaaS de Logística**. AIcolmena recomienda revisar el posicionamiento de marca.
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -154,7 +154,7 @@ export default function SmartIdeaForm({ onClose }: Props) {
               className="w-full py-4 rounded-2xl border border-dashed border-primary/30 text-primary font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary/5 transition-all"
             >
               {loadingIA ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-              Estrategia Inteligente Domex
+              Estrategia Inteligente AIcolmena
             </button>
           </motion.div>
         );

@@ -30,14 +30,14 @@ export function QuickActions() {
   return (
     <>
       {/* Botón Flotante Principal */}
-      <div className="fixed bottom-24 right-6 z-50">
+      <div className="fixed bottom-40 right-4 z-50">
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "w-16 h-16 rounded-[2rem] flex items-center justify-center transition-all duration-300 z-[60] shadow-2xl overflow-hidden",
             isOpen 
-              ? "bg-[#18181F] text-white shadow-[0_0_20px_rgba(124,58,237,0.4)]" 
+              ? "bg-[#18181F] text-white shadow-[0_0_20px_rgba(0,212,255,0.28)]" 
               : "bg-surface text-white border border-white/5"
           )}
         >
@@ -59,7 +59,7 @@ export function QuickActions() {
                 animate={{ rotate: 0, opacity: 1 }}
                 exit={{ rotate: -90, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] w-full h-full flex items-center justify-center shadow-[0_8px_30px_rgba(124,58,237,0.35)]"
+                className="bg-gradient-to-br from-[#FF6D28] to-[#e05a1a] w-full h-full flex items-center justify-center shadow-[0_8px_30px_rgba(255,109,40,0.35)]"
               >
                 <Plus size={32} />
               </motion.div>
@@ -95,7 +95,7 @@ export function QuickActions() {
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => manejarAccion('tarea')}
-              className="w-full h-16 rounded-[18px] px-[18px] bg-gradient-to-r from-[#7C3AED] to-[#5B21B6] shadow-[0_8px_30px_rgba(124,58,237,0.35)] flex items-center"
+              className="w-full h-16 rounded-[18px] px-[18px] bg-gradient-to-r from-[#FF6D28] to-[#e05a1a] shadow-[0_8px_30px_rgba(255,109,40,0.35)] flex items-center"
             >
               <div className="mr-3">
                 <CheckSquare size={22} className="text-white" />

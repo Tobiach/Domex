@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Volume2, SkipForward, RotateCcw, ChevronRight } from 'lucide-react';
+import { Volume2, SkipForward, RotateCcw, ChevronRight, Pause, Play } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { hablarConCallback } from '../services/voiceService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getPatterns, generatePatterns } from '../services/patternService';
 
 const BRIEFING_KEY = 'domex_briefing_';
 
@@ -32,7 +33,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Estado = 'listo' | 'reproduciendo' | 'terminado';
+type Estado = 'listo' | 'reproduciendo' | 'pausado' | 'terminado';
 
 export default function BriefingMatutino({ onClose }: Props) {
   const { tareas, mercado, agenda } = useApp();
@@ -40,8 +41,20 @@ export default function BriefingMatutino({ onClose }: Props) {
   const [estado, setEstado] = useState<Estado>('listo');
   const [lineaActiva, setLineaActiva] = useState(-1);
   const stopRef = useRef<(() => void) | null>(null);
+  const [patternInsight, setPatternInsight] = useState('');
 
-  const nombre = profile.identity.nombre || 'jefe';
+  const nombre = profile.identity.nombre || 'vos';
+  useEffect(() => {
+    const cached = getPatterns();
+    if (cached?.insight) {
+      setPatternInsight(cached.insight);
+    } else {
+      generatePatterns(nombre)
+        .then(p => { if (p.insight) setPatternInsight(p.insight); })
+        .catch(() => {});
+    }
+  }, [nombre]);
+
   const ahora = format(new Date(), "EEEE d 'de' MMMM", { locale: es });
   const horaActual = format(new Date(), 'HH:mm');
 
@@ -59,8 +72,11 @@ export default function BriefingMatutino({ onClose }: Props) {
     })
     .sort((a, b) => new Date(`${a.fecha}T${a.hora}`).getTime() - new Date(`${b.fecha}T${b.hora}`).getTime())[0];
 
+  const horaNum = new Date().getHours();
+  const saludo = horaNum >= 5 && horaNum < 12 ? 'Buenos días' : horaNum >= 12 && horaNum < 19 ? 'Buenas tardes' : 'Buenas noches';
+
   const lineas = [
-    `Buenos días, ${nombre}. Son las ${horaActual} del ${ahora}.`,
+    `${saludo}, ${nombre}. Son las ${horaActual} del ${ahora}.`,
     tareasFoco.length > 0
       ? `Tenés ${tareasFoco.length} tarea${tareasFoco.length > 1 ? 's' : ''} clave hoy: ${tareasFoco.map(t => t.titulo).join(', ')}.`
       : 'No tenés tareas críticas pendientes hoy.',
@@ -70,6 +86,7 @@ export default function BriefingMatutino({ onClose }: Props) {
     proximaReunion
       ? `Próxima reunión: ${proximaReunion.titulo} a las ${proximaReunion.hora}${proximaReunion.personas.length ? ` con ${proximaReunion.personas.join(', ')}` : ''}.`
       : '',
+    patternInsight || '',
     '¿Arrancamos?',
   ].filter(Boolean);
 
@@ -103,6 +120,16 @@ export default function BriefingMatutino({ onClose }: Props) {
       clearInterval(intervalId);
       window.speechSynthesis.cancel();
     };
+  };
+
+  const pausar = () => {
+    window.speechSynthesis.pause();
+    setEstado('pausado');
+  };
+
+  const reanudar = () => {
+    window.speechSynthesis.resume();
+    setEstado('reproduciendo');
   };
 
   const saltar = () => {
@@ -139,7 +166,7 @@ export default function BriefingMatutino({ onClose }: Props) {
         <motion.div
           animate={{ scale: [1.1, 1, 1.1], opacity: [0.1, 0.2, 0.1] }}
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          className="absolute -bottom-32 -right-32 w-80 h-80 bg-violet-500/20 rounded-full blur-3xl"
+          className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full blur-3xl" style={{ background: 'rgba(212,144,10,0.08)' }}
         />
       </div>
 
@@ -152,7 +179,7 @@ export default function BriefingMatutino({ onClose }: Props) {
           className="text-center"
         >
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/60 mb-1">Sistema operativo personal</p>
-          <h1 className="text-3xl font-black italic tracking-tighter">DOMEX</h1>
+          <h1 className="text-3xl font-black italic tracking-tighter">AICOLMENA</h1>
         </motion.div>
 
         {/* Wave animation */}
@@ -218,19 +245,26 @@ export default function BriefingMatutino({ onClose }: Props) {
               Reproducir briefing
             </button>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={repetir}
-                className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-white/10 transition-all"
               >
-                <RotateCcw size={16} />
+                <RotateCcw size={14} />
                 Repetir
               </button>
               <button
-                onClick={saltar}
-                className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                onClick={estado === 'pausado' ? reanudar : pausar}
+                className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-white/10 transition-all"
               >
-                <SkipForward size={16} />
+                {estado === 'pausado' ? <Play size={14} /> : <Pause size={14} />}
+                {estado === 'pausado' ? 'Continuar' : 'Pausar'}
+              </button>
+              <button
+                onClick={saltar}
+                className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-white/10 transition-all"
+              >
+                <SkipForward size={14} />
                 Saltar
               </button>
             </div>
@@ -260,5 +294,9 @@ export function useBriefing() {
     }
   }, []);
 
-  return { mostrar, cerrar: () => setMostrar(false) };
+  return {
+    mostrar,
+    cerrar: () => setMostrar(false),
+    repetir: () => setMostrar(true), // re-abre sin verificar el flag del día
+  };
 }

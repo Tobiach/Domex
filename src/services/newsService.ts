@@ -1,4 +1,4 @@
-import { NewsItem } from '../types';
+﻿import { NewsItem } from '../types';
 
 const CACHE_KEY = 'domex_news_cache';
 const CACHE_TTL = 15 * 60 * 1000;
@@ -8,7 +8,7 @@ const MOCK_NEWS: NewsItem[] = [
     id: 'mock-1',
     titulo: 'Gemini 2.0 redefine el análisis financiero en tiempo real',
     resumen: 'La nueva arquitectura de Google permite procesar millones de puntos de datos de mercado con una latencia mínima, superando a modelos anteriores.',
-    fuente: 'Domex Tech',
+    fuente: 'AIcolmena Tech',
     url: '#',
     imagen: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800',
     fecha: new Date().toISOString(),

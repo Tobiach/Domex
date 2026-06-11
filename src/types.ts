@@ -4,8 +4,8 @@ export interface PerfilUsuario {
   balance: number;
   ingresosMensuales: number;
   gastosMensuales: number;
-  energia: number; // 0-100
-  progresoSemanal: number; // 0-100
+  energia: number;
+  progresoSemanal: number;
 }
 
 export type EstadoIdea = 'idea' | 'validacion' | 'ejecucion';
@@ -59,15 +59,18 @@ export interface Tarea {
   completada: boolean;
   prioridad: 'baja' | 'media' | 'alta';
   fechaVencimiento: string;
-  esFoco: boolean; // Indica si es una de las 3 tareas clave del día
-  objetivoId?: string; // Conexión con objetivos
+  esFoco: boolean;
+  objetivoId?: string;
 }
 
 export interface Habito {
   id: string;
   titulo: string;
+  icono: string;
   racha: number;
   completadoHoy: boolean;
+  ultimaVez: string | null;
+  creadoEn: string;
 }
 
 export interface Transaccion {
@@ -94,6 +97,7 @@ export interface ContactoCRM {
   empresa: string;
   estado: 'prospecto' | 'contactado' | 'negociacion' | 'ganado';
   valor: number;
+  tipo?: 'servicio' | 'producto' | 'saas';
 }
 
 export interface Mensaje {
@@ -122,6 +126,8 @@ export interface UserProfile {
     avatarUrl: string | null;
     iniciales: string;
     saludo: 'Hola' | 'Hey' | 'Buenos días' | 'Qué tal';
+    email?: string;
+    passwordHash?: string;
   };
   visual: {
     accentColor: string;
@@ -137,6 +143,9 @@ export interface UserProfile {
     chat: boolean;
     mercado: boolean;
     intel: boolean;
+    habitos: boolean;
+    conciencia: boolean;
+    optimizacion: boolean;
   };
   goals: {
     capitalObjetivo: number;
@@ -172,6 +181,217 @@ export interface VoiceProcessorResult {
   confianza: number;
 }
 
+// ─── Módulo: Micro-aprendizaje ─────────────────────────────────────────────
+
+export interface LearningCategory {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  colorAccent: string;
+  icono: string;
+  racha: number;
+  ultimoDia: string | null;
+  creadoEn: string;
+}
+
+export interface LearningLesson {
+  id: string;
+  categoriaId: string;
+  titulo: string;
+  contenido: string;
+  tipoContenido: 'ai-generated' | 'user-external';
+  duracionEstimada: number;
+  fuente?: string;
+  completado: boolean;
+  completadoEn?: string;
+  creadoEn: string;
+}
+
+// ─── Módulo: Nutrición ────────────────────────────────────────────────────
+
+export interface MealEntry {
+  id: string;
+  timestamp: string;
+  tipo: 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'snack';
+  descripcion: string;
+  calorias: number;
+  azucar: number;
+  proteina: number;
+  procesada: 'natural' | 'semi-procesada' | 'ultraprocesada';
+  analisisIA: string;
+  creadoEn: string;
+}
+
+// ─── Módulo: Memoria ──────────────────────────────────────────────────────
+
+export interface MemoryEntry {
+  id: string;
+  fecha: string;
+  score: number;
+  sintomas: string[];
+  contexto: string;
+  creadoEn: string;
+}
+
+// ─── Etapa 4: Optimización Existencial ───────────────────────────────────
+
+export interface Decision {
+  id: string;
+  descripcion: string;
+  fecha: string;
+  contexto: string;
+  alternativas: string[];
+  sentimiento: 'confianza' | 'duda' | 'urgencia' | 'miedo';
+  clarityAlMomento: number; // 1-10
+  resultado?: string;
+  aprobada?: boolean;
+  leccion?: string;
+  creadoEn: string;
+}
+
+export interface BlindSpot {
+  id: string;
+  descripcion: string;
+  evidencia: string[];
+  impacto: string;
+  intervencion: string;
+  completado: boolean;
+  creadoEn: string;
+}
+
+export interface AccountabilityGoal {
+  id: string;
+  meta: string;
+  fechaInicio: string;
+  fechaFin: string;
+  progreso: number; // 0-100
+  completada: boolean;
+  leccion?: string;
+  creadoEn: string;
+}
+
+export interface LegacyProfile {
+  vision: string;
+  valores: string[];
+  paraQuien: string;
+  alineacion: number; // 0-100
+  reflexionAlineacion?: string;
+  updatedAt: string;
+}
+
+// ─── Etapa 3: Aprendizaje Avanzado ───────────────────────────────────────
+
+export interface LearningPath {
+  id: string;
+  titulo: string;
+  goal: string;
+  duracion: number; // semanas
+  dificultad: 'principiante' | 'intermedio' | 'avanzado';
+  roadmap: string; // markdown generado por Groq
+  semanasCompletadas: number;
+  racha: number;
+  ultimaSemana: string | null;
+  creadoEn: string;
+}
+
+export interface PodcastEntry {
+  id: string;
+  titulo: string;
+  tema: string;
+  ideas: string[];
+  aplicables: string[];
+  aprendizajeKey: string;
+  creadoEn: string;
+}
+
+export interface BookEntry {
+  id: string;
+  titulo: string;
+  autor: string;
+  resumen: string;
+  ideasClave: string[];
+  aplicaciones: string[];
+  rating: number;
+  completado: boolean;
+  creadoEn: string;
+}
+
+export interface WisdomQuote {
+  id: string;
+  fecha: string;
+  cita: string;
+  autor: string;
+  tema: string;
+  reflexionUsuario?: string;
+  guardado: boolean;
+  creadoEn: string;
+}
+
+export interface DebateEntry {
+  id: string;
+  pregunta: string;
+  opcionA: { titulo: string; pro: string[]; contra: string[]; riesgo: string; oportunidad: string };
+  opcionB: { titulo: string; pro: string[]; contra: string[]; riesgo: string; oportunidad: string };
+  insight: string;
+  reflexionUsuario?: string;
+  decisionFinal?: string;
+  creadoEn: string;
+}
+
+// ─── Módulo: Hormone Balance ──────────────────────────────────────────────
+
+export interface HormoneEntry {
+  id: string;
+  fecha: string;
+  inputs: {
+    energia: number;   // 1-10
+    libido: number;    // 1-10
+    vigor: number;     // 1-10 (proxy testosterona)
+    mood: number;      // 1-10
+    focus: number;     // 1-10
+    motivation: number; // 1-10
+    placer: number;    // 1-10
+    estres: number;    // 1-10 (a invertir)
+    brainFog: number;  // 1-10 (a invertir)
+  };
+  scores: {
+    T: number;  // 0-100
+    C: number;  // 0-100 (cortisol invertido)
+    D: number;  // 0-100
+  };
+  analisisIA?: string;
+  creadoEn: string;
+}
+
+// ─── Módulo: Energy Balance M/F ───────────────────────────────────────────
+
+export interface EnergyBalanceEntry {
+  id: string;
+  fecha: string;
+  tipo: 'masculino' | 'femenino' | 'balanceado';
+  reflexion?: string;
+  sugerenciaIA?: string;
+  creadoEn: string;
+}
+
+// ─── Módulo: Energy Tracker ───────────────────────────────────────────────
+
+export interface EnergyEntry {
+  id: string;
+  fecha: string;
+  score: number; // 1-10
+  factores: {
+    sueno: number; // horas
+    tipoDeSueno: 'profundo' | 'interrumpido' | 'ligero';
+    estresTopics: string[];
+  };
+  analisisIA?: string;
+  recomendacion?: string;
+  creadoEn: string;
+}
+
+// ─── Defaults ─────────────────────────────────────────────────────────────
+
 export const DEFAULT_PROFILE: UserProfile = {
   identity: {
     nombre: '',
@@ -181,7 +401,7 @@ export const DEFAULT_PROFILE: UserProfile = {
     saludo: 'Hola',
   },
   visual: {
-    accentColor: '#7C3AED',
+    accentColor: '#00D4FF',
     theme: 'dark',
     fontSize: 'normal',
   },
@@ -194,6 +414,9 @@ export const DEFAULT_PROFILE: UserProfile = {
     chat: true,
     mercado: true,
     intel: true,
+    habitos: true,
+    conciencia: true,
+    optimizacion: true,
   },
   goals: {
     capitalObjetivo: 50000,

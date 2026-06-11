@@ -1,17 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'motion/react';
-import { 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  TrendingUp, 
-  DollarSign, 
-  Plus, 
-  PieChart, 
-  Activity,
-  History,
-  Rocket,
-  ChevronRight
-} from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, TrendingUp, Plus, Activity, History, Rocket, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -19,122 +8,163 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function Capital() {
-  const { usuario, transacciones, ideas } = useApp();
+  const { balanceCalculado, transacciones, ideas } = useApp();
   const navigate = useNavigate();
 
-  const valorPipeline = ideas.reduce((acc, current) => acc + (current.valorEstimado || 0), 0);
-  const potencialMensual = ideas.filter(i => i.estado === 'ejecucion').reduce((acc, current) => acc + (current.potencialMensual || 0), 0);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const ingresosDelMes = transacciones
+    .filter(t => t.tipo === 'ingreso' && t.fecha.startsWith(currentMonth))
+    .reduce((sum, t) => sum + t.monto, 0);
+  const gastosDelMes = transacciones
+    .filter(t => t.tipo === 'gasto' && t.fecha.startsWith(currentMonth))
+    .reduce((sum, t) => sum + t.monto, 0);
+  const netMes = ingresosDelMes - gastosDelMes;
+
+  const valorPipeline = ideas.reduce((acc, i) => acc + (i.valorEstimado || 0), 0);
+  const potencialMensual = ideas
+    .filter(i => i.estado === 'ejecucion')
+    .reduce((acc, i) => acc + (i.potencialMensual || 0), 0);
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+
+      {/* Header */}
       <header className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter uppercase">Control de Capital</h1>
-          <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] mt-1">Flujo de caja estratégico</p>
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="live-dot" />
+            <span className="sys-label">FLUJO EN TIEMPO REAL</span>
+          </div>
+          <h1 className="text-3xl font-black tracking-tighter uppercase">Capital</h1>
         </div>
-        <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-          <Activity size={24} className="text-emerald-500" />
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
+          <Activity size={18} className="text-emerald-400" />
         </div>
       </header>
 
-      {/* Tarjeta de Balance */}
-      <div className="glass-card p-8 premium-gradient border-none relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-white/20 transition-all duration-700" />
-        <p className="text-white/60 text-xs font-black uppercase tracking-[0.2em] mb-2 italic">Balance Neto Domex</p>
-        <div className="flex items-baseline gap-2">
-          <span className="text-white/40 text-2xl font-black">$</span>
-          <h2 className="text-5xl font-black tracking-tighter text-white">
-            {usuario.balance.toLocaleString()}
-          </h2>
-        </div>
-        <div className="mt-8 grid grid-cols-2 gap-4">
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Ingresos mes</p>
-            <p className="text-xl font-black text-emerald-400 group-hover:scale-105 transition-transform origin-left">+${usuario.ingresosMensuales.toLocaleString()}</p>
+      {/* Balance principal */}
+      <div className="bm-card p-6 relative overflow-hidden scanline">
+        <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-10" style={{ background: 'var(--color-accent)' }} />
+        <div className="relative z-10">
+          <span className="sys-label block mb-3">BALANCE NETO AICOLMENA</span>
+          <div className="flex items-baseline gap-2 mb-6">
+            <span className="text-2xl font-black text-white/20 sys-value">$</span>
+            <h2 className={cn('text-5xl font-black tracking-tighter sys-value', balanceCalculado >= 0 ? 'text-white' : 'text-red-400')}>
+              {Math.abs(balanceCalculado).toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+            </h2>
+            {balanceCalculado < 0 && <span className="text-red-400/50 text-sm font-black">DÉFICIT</span>}
           </div>
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Gastos mes</p>
-            <p className="text-xl font-black text-rose-400 group-hover:scale-105 transition-transform origin-left">-${usuario.gastosMensuales.toLocaleString()}</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Valor en Pipeline (Sistema Integrado) */}
-      <div className="grid gap-4">
-        <div className="glass-card p-6 bg-white/[0.03] border-white/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-20 transition-opacity">
-            <Rocket size={80} />
-          </div>
-          <div className="relative z-10">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">Valor Estratégico en Pipeline</h3>
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-3xl font-black tracking-tighter">${valorPipeline.toLocaleString()}</p>
-                <p className="text-[9px] text-emerald-500 font-bold uppercase mt-1 flex items-center gap-1">
-                  <TrendingUp size={10} />
-                  Potencial +${potencialMensual}/mes en ejecución
-                </p>
-              </div>
-              <button 
-                onClick={() => navigate('/ideas')}
-                className="bg-white/5 hover:bg-white/10 p-3 rounded-2xl transition-all"
-              >
-                <ChevronRight size={20} className="text-white/40" />
-              </button>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl p-3" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
+              <span className="sys-label block mb-1">INGRESOS</span>
+              <p className="text-base font-black sys-value text-emerald-400">+${ingresosDelMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <span className="sys-label block mb-1">GASTOS</span>
+              <p className="text-base font-black sys-value text-red-400">-${gastosDelMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+            </div>
+            <div className="rounded-xl p-3" style={{
+              background: netMes >= 0 ? 'rgba(0,212,255,0.07)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${netMes >= 0 ? 'rgba(0,212,255,0.12)' : 'rgba(239,68,68,0.15)'}`,
+            }}>
+              <span className="sys-label block mb-1">NETO MES</span>
+              <p className="text-base font-black sys-value" style={{ color: netMes >= 0 ? 'var(--color-accent)' : '#f87171' }}>
+                {netMes >= 0 ? '+' : ''}{netMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Historial Quirúrgico */}
-      <section className="space-y-6">
+      {/* Pipeline */}
+      <div className="bm-card p-5 relative overflow-hidden group">
+        <div className="absolute right-4 top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+          <Rocket size={60} />
+        </div>
+        <div className="relative z-10">
+          <span className="sys-label block mb-3">PIPELINE ESTRATÉGICO</span>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-3xl font-black sys-value">${valorPipeline.toLocaleString()}</p>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <TrendingUp size={10} className="text-emerald-400" />
+                <span className="sys-label" style={{ color: '#10B981', opacity: 0.9 }}>
+                  ${potencialMensual.toLocaleString()}/MES EN EJECUCIÓN
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/ideas')}
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:opacity-80"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <ChevronRight size={18} className="text-white/40" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Historial */}
+      <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <History size={18} className="text-white/40" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-white/40">Movimientos Recientes</h3>
+            <History size={13} className="text-white/30" />
+            <span className="sys-label">MOVIMIENTOS RECIENTES</span>
           </div>
-          <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">Ver todo</button>
+          <span className="sys-label">TODOS →</span>
         </div>
 
-        <div className="space-y-3">
-          {transacciones.map((t) => (
-            <div key={t.id} className="glass-card p-5 bg-white/[0.02] border-white/5 flex items-center justify-between group hover:bg-white/[0.04] transition-all">
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110",
-                  t.tipo === 'ingreso' ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
-                )}>
-                  {t.tipo === 'ingreso' ? <ArrowDownLeft size={24} /> : <ArrowUpRight size={24} />}
-                </div>
-                <div>
-                  <h4 className="font-bold text-[15px] tracking-tight">{t.descripcion}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-white/30">{t.categoria}</span>
-                    <div className="w-1 h-1 bg-white/10 rounded-full" />
-                    <span className="text-[9px] font-bold text-white/20">{format(new Date(t.fecha), "dd MMM HH:mm")}</span>
-                  </div>
-                </div>
-              </div>
-              <div className={cn(
-                "font-black text-lg tracking-tight",
-                t.tipo === 'ingreso' ? "text-emerald-400" : "text-rose-400"
-              )}>
-                {t.tipo === 'ingreso' ? '+' : '-'}${t.monto.toLocaleString()}
-              </div>
+        <div className="space-y-2">
+          {transacciones.length === 0 ? (
+            <div className="bm-card p-5 text-center">
+              <span className="sys-label">SIN TRANSACCIONES REGISTRADAS</span>
             </div>
+          ) : transacciones.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bm-card p-4 flex items-center gap-4 group hover:border-white/10 transition-all"
+            >
+              <div className={cn(
+                'w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105',
+                t.tipo === 'ingreso'
+                  ? 'text-emerald-400'
+                  : 'text-red-400'
+              )} style={{
+                background: t.tipo === 'ingreso' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                border: `1px solid ${t.tipo === 'ingreso' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+              }}>
+                {t.tipo === 'ingreso' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[13px] tracking-tight truncate">{t.descripcion}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="sys-label">{t.categoria.toUpperCase()}</span>
+                  <span className="text-white/10">·</span>
+                  <span className="sys-label">{format(new Date(t.fecha), "dd MMM HH:mm").toUpperCase()}</span>
+                </div>
+              </div>
+
+              <p className={cn('font-black text-[15px] sys-value shrink-0', t.tipo === 'ingreso' ? 'text-emerald-400' : 'text-red-400')}>
+                {t.tipo === 'ingreso' ? '+' : '-'}${t.monto.toLocaleString()}
+              </p>
+            </motion.div>
           ))}
         </div>
       </section>
 
-      {/* Análisis de Optimización */}
-      <div className="glass-card p-6 bg-primary/5 border-primary/20 flex gap-4 items-center">
-        <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-          <PieChart className="text-white" size={20} />
+      {/* Optimización */}
+      <div className="bm-card p-5 flex gap-4 items-start" style={{ borderColor: 'rgba(0,212,255,0.12)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+          <TrendingUp size={16} style={{ color: 'var(--color-accent)' }} />
         </div>
         <div>
-          <h4 className="font-black text-xs uppercase tracking-widest text-primary mb-1">Optimización Detectada</h4>
-          <p className="text-xs text-white/60 font-medium leading-relaxed">
-            Tus suscripciones bajaron un <span className="text-emerald-400 font-black">4%</span> este mes. Domex sugiere reinvertir en **Validación de Ideas**.
+          <span className="sys-label block mb-1" style={{ color: 'var(--color-accent)', opacity: 0.9 }}>ANÁLISIS AICOLMENA</span>
+          <p className="text-[12px] text-white/50 font-medium leading-relaxed">
+            Suscripciones bajaron un <span className="text-emerald-400 font-black">4%</span> este mes. Reinvertir delta en validación de ideas activas.
           </p>
         </div>
       </div>

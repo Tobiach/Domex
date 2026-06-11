@@ -146,10 +146,11 @@ export default function SmartCapitalForm({ onClose }: Props) {
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-1">Descripción / Concepto</label>
               <div className="relative">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.descripcion}
                   onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
+                  onBlur={sugerirCategoria}
                   placeholder="Ej: Pago de servicios oficina"
                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-5 font-bold focus:outline-none focus:border-primary/50 transition-all"
                 />

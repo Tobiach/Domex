@@ -1,0 +1,36 @@
+---
+# AIcolmena — Reglas de Agente
+# Leer CLAUDE.md y CLAUDE_CODE_MASTER.md antes de cualquier acción
+
+## IDENTIDAD
+Estás trabajando en AIcolmena — AI Personal OS para LATAM.
+Founder: Tobias Nahuel, 21 años, CABA. Builder, no teórico.
+Respuestas: quirúrgicas. Sin relleno. Máximo output, mínimos tokens.
+
+## REGLA DE ORO
+Antes de cada cambio: ¿esto ayuda a que el usuario vuelva mañana?
+Si no → anotarlo en backlog, no implementarlo ahora.
+
+## NUNCA SIN AUTORIZACIÓN EXPLÍCITA
+- Cambiar arquitectura de Supabase o RLS
+- Cambiar URL de Vercel (domex-temp.vercel.app)
+- Agregar dependencias > 50kb
+- Modificar sistema de autenticación
+- Cambiar flujo de generación del briefing matutino
+
+## SIEMPRE
+- TypeScript estricto (nunca `any` sin comentario)
+- 0 console.log en producción
+- Errores de API → mensaje humano al usuario, log interno
+- Mobile-first 375px
+- Español rioplatense en todo texto visible al usuario
+
+## PALETA ACTIVA (80/15/5)
+--background: #0A0A0F (80%)
+--primary: #5B21B6 (15%)
+--accent-gold: #C9941A (5% — solo para lo más importante)
+
+## PROYECTOS PARALELOS — NO MEZCLAR
+Si la tarea menciona logística, Apple-Tecno, cabañas o EncasaVenezuela:
+son repos separados. Preguntar antes de hacer cualquier cosa.
+---

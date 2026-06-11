@@ -1,17 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  Send,
-  Bot,
-  User,
-  Sparkles,
-  Loader2,
-  X,
-  Trash2,
-  Mic,
-  MicOff,
-  Volume2
-} from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, RotateCcw, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -26,58 +15,63 @@ interface IWindow extends Window {
   webkitSpeechRecognition: any;
 }
 
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-4 py-3">
+      {[0,1,2].map(i => (
+        <motion.span
+          key={i}
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ background: 'var(--color-accent)' }}
+          animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.1, 0.8] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+        />
+      ))}
+      <span className="sys-label ml-2">PROCESANDO QUERY</span>
+    </div>
+  );
+}
+
 export default function DomexAI() {
-  const { mensajes, agregarMensaje, tareas, usuario, ideas } = useApp();
+  const { mensajes, agregarMensaje, limpiarMensajes, tareas, usuario, ideas } = useApp();
   const { profile } = useUserProfile();
   const [input, setInput] = useState('');
   const [estaEscribiendo, setEstaEscribiendo] = useState(false);
   const [estaEscuchando, setEstaEscuchando] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     const { SpeechRecognition, webkitSpeechRecognition } = window as unknown as IWindow;
-    const SpeechRecognitionClass = SpeechRecognition || webkitSpeechRecognition;
-
-    if (SpeechRecognitionClass) {
-      const recognition = new SpeechRecognitionClass();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'es-ES';
-      recognition.onresult = (event: any) => {
-        setInput(event.results[0][0].transcript);
-        setEstaEscuchando(false);
-      };
-      recognition.onerror = () => setEstaEscuchando(false);
-      recognition.onend = () => setEstaEscuchando(false);
-      recognitionRef.current = recognition;
+    const SR = SpeechRecognition || webkitSpeechRecognition;
+    if (SR) {
+      const r = new SR();
+      r.continuous = false;
+      r.interimResults = false;
+      r.lang = 'es-AR';
+      r.onresult = (e: any) => { setInput(e.results[0][0].transcript); setEstaEscuchando(false); };
+      r.onerror = () => setEstaEscuchando(false);
+      r.onend = () => setEstaEscuchando(false);
+      recognitionRef.current = r;
     }
   }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [mensajes, estaEscribiendo]);
 
   const manejarEnvio = async () => {
     if (!input.trim() || estaEscribiendo) return;
-
-    const mensajeUsuario = {
-      id: Date.now().toString(),
-      rol: 'usuario' as const,
-      contenido: input,
-      timestamp: new Date().toISOString()
-    };
-
-    agregarMensaje(mensajeUsuario);
+    const msg = { id: Date.now().toString(), rol: 'usuario' as const, contenido: input, timestamp: new Date().toISOString() };
+    agregarMensaje(msg);
     const inputActual = input;
     setInput('');
     setEstaEscribiendo(true);
 
     try {
-      const sistemPrompt = `Eres Domex AI, el asistente estratégico personal del sistema Domex.
+      const sistemPrompt = `Eres AIcolmena AI, el asistente estratégico personal del sistema AIcolmena.
 Tu tono es profesional, directo y analítico. Usás negritas y listas para estructurar bien.
 Respondés SIEMPRE en español. Sos conciso y útil, como un socio de negocios senior.
 
@@ -99,17 +93,15 @@ Contexto del usuario:
       ]);
 
       agregarMensaje({
-        id: (Date.now() + 1).toString(),
-        rol: 'asistente' as const,
+        id: (Date.now() + 1).toString(), rol: 'asistente' as const,
         contenido: text || 'Error procesando la respuesta. Intentá de nuevo.',
         timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error(error);
       agregarMensaje({
-        id: (Date.now() + 1).toString(),
-        rol: 'asistente' as const,
-        contenido: 'Error de conexión con Groq. Verificá la API key en Vercel.',
+        id: (Date.now() + 1).toString(), rol: 'asistente' as const,
+        contenido: 'ERROR_502: Falla en conexión neural. Verificá la API key en Vercel.',
         timestamp: new Date().toISOString()
       });
     } finally {
@@ -118,124 +110,161 @@ Contexto del usuario:
   };
 
   const alternarEscucha = () => {
-    if (estaEscuchando) {
-      recognitionRef.current?.stop();
-    } else {
-      setEstaEscuchando(true);
-      recognitionRef.current?.start();
-    }
+    if (estaEscuchando) recognitionRef.current?.stop();
+    else { setEstaEscuchando(true); recognitionRef.current?.start(); }
   };
 
+  const nombre = profile.identity.nombre || 'OPERADOR';
+
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] space-y-4 -mt-4">
-      <header className="flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100vh-120px)] gap-4 -mt-4">
+
+      {/* ── HEADER ── */}
+      <header className="bm-card px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-primary rounded-xl shadow-[0_0_15px_rgba(124,58,237,0.4)]">
-            <Sparkles className="text-white" size={20} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center relative" style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.28)' }}>
+            <span className="text-[15px]">⬡</span>
+            <div className="absolute -top-0.5 -right-0.5 live-dot" style={{ width: 5, height: 5 }} />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tight leading-none">Domex AI</h1>
-            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Neuro-Link Activo</p>
+            <p className="text-[13px] font-black tracking-tight leading-none">COLMENA</p>
+            <p className="sys-label mt-0.5" style={{ color: '#10B981', opacity: 1 }}>NEURAL LINK · ACTIVO</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate('/')}
-          className="p-2 h-10 w-10 bg-white/5 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
-        >
-          <X size={20} className="text-white/40" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={limpiarMensajes}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/20 hover:text-white/60 transition-colors"
+            style={{ border: '1px solid rgba(255,255,255,0.06)' }}
+            title="Nueva sesión"
+          >
+            <RotateCcw size={13} />
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/20 hover:text-white/60 transition-colors"
+            style={{ border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <X size={15} />
+          </button>
+        </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto space-y-6 scroll-smooth pr-1" ref={scrollRef}>
+      {/* ── MESSAGES ── */}
+      <div className="flex-1 overflow-y-auto space-y-4 pr-1" ref={scrollRef}>
         <AnimatePresence initial={false}>
           {mensajes.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={cn(
-                "flex items-start gap-3 w-full",
-                msg.rol === 'usuario' ? "flex-row-reverse" : ""
-              )}
+              className={cn('flex items-end gap-2', msg.rol === 'usuario' ? 'flex-row-reverse' : '')}
             >
+              {/* Avatar */}
               <div className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-1",
-                msg.rol === 'asistente' ? "bg-primary text-white" : "bg-white/10 text-white/60"
-              )}>
-                {msg.rol === 'asistente' ? <Bot size={18} /> : <User size={18} />}
-              </div>
-              <div className={cn(
-                "px-4 py-3 rounded-2xl max-w-[85%] text-[15px] leading-relaxed shadow-sm relative group",
+                'w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 mb-0.5',
                 msg.rol === 'asistente'
-                  ? "bg-white/[0.03] border border-white/5 text-white/90"
-                  : "bg-primary text-white font-medium"
-              )}>
-                <div className="markdown-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.contenido}
-                  </ReactMarkdown>
-                </div>
+                  ? 'text-primary'
+                  : 'text-white/50'
+              )} style={{
+                background: msg.rol === 'asistente' ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${msg.rol === 'asistente' ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
+              }}>
+                {msg.rol === 'asistente' ? '⬡' : nombre.charAt(0).toUpperCase()}
+              </div>
+
+              {/* Bubble */}
+              <div className={cn('max-w-[82%] min-w-0 relative group', msg.rol === 'usuario' ? 'items-end' : 'items-start')}>
                 {msg.rol === 'asistente' && (
-                  <button
-                    onClick={() => hablarTexto(msg.contenido)}
-                    className="absolute -right-8 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-white transition-opacity opacity-0 group-hover:opacity-100"
-                  >
-                    <Volume2 size={16} />
-                  </button>
+                  <span className="sys-label block mb-1 ml-1">COLMENA</span>
                 )}
+                <div
+                  className={cn('px-4 py-3 text-[14px] leading-relaxed relative', msg.rol === 'usuario' ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl rounded-bl-sm')}
+                  style={msg.rol === 'asistente' ? {
+                    background: 'rgba(12,12,22,0.95)',
+                    border: '1px solid rgba(0,212,255,0.12)',
+                    color: 'rgba(255,255,255,0.85)',
+                  } : {
+                    background: 'var(--accent-main)',
+                    color: 'white',
+                    fontWeight: 500,
+                  }}
+                >
+                  {msg.rol === 'asistente' ? (
+                    <div className="markdown-content">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.contenido}</ReactMarkdown>
+                    </div>
+                  ) : msg.contenido}
+
+                  {msg.rol === 'asistente' && (
+                    <button
+                      onClick={() => hablarTexto(msg.contenido)}
+                      className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-white/20 hover:text-white/60 p-1.5"
+                    >
+                      <Volume2 size={13} />
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
 
         {estaEscribiendo && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3"
-          >
-            <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center">
-              <Loader2 size={18} className="animate-spin" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-end gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] text-primary shrink-0"
+              style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+              ⬡
             </div>
-            <div className="bg-white/5 border border-white/5 p-3 px-4 rounded-2xl italic text-[13px] text-white/40 font-medium tracking-tight">
-              Domex procesando datos...
+            <div className="bm-card" style={{ background: 'rgba(12,12,22,0.95)' }}>
+              <TypingDots />
             </div>
           </motion.div>
         )}
       </div>
 
-      <div className="relative group pb-4">
-        <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-purple-500/30 rounded-2xl blur opacity-25 group-focus-within:opacity-50 transition duration-1000" />
-        <div className="relative flex items-center">
+      {/* ── INPUT TERMINAL ── */}
+      <div className="pb-4 relative">
+        <div className="bm-card flex items-center gap-0 overflow-hidden" style={{ border: estaEscuchando ? '1px solid rgba(0,212,255,0.35)' : undefined }}>
+          {/* Terminal prefix */}
+          <span className="sys-value text-primary/60 text-[12px] pl-4 pr-1 shrink-0 select-none">&gt;_</span>
+
+          {/* Mic */}
           <button
             onClick={alternarEscucha}
-            className={cn(
-              "absolute left-4 top-1/2 -translate-y-1/2 transition-colors z-10",
-              estaEscuchando ? "text-primary scale-125 animate-pulse" : "text-white/20 hover:text-white"
-            )}
+            className={cn('p-3 transition-all', estaEscuchando ? 'text-primary' : 'text-white/20 hover:text-white/50')}
           >
-            {estaEscuchando ? <MicOff size={20} /> : <Mic size={20} />}
+            {estaEscuchando
+              ? <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.8 }}><MicOff size={17} /></motion.div>
+              : <Mic size={17} />
+            }
           </button>
+
+          {/* Input */}
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && manejarEnvio()}
-            placeholder={estaEscuchando ? "Escuchando..." : "Analizar estrategia de hoy..."}
-            className={cn(
-              "w-full bg-surface-lighter border border-white/10 rounded-2xl py-4 px-12 pr-14 focus:outline-none focus:border-primary/50 transition-all font-medium text-[15px] placeholder:text-white/20 shadow-2xl",
-              estaEscuchando && "border-primary/50 bg-primary/5"
-            )}
+            placeholder={estaEscuchando ? 'ESCUCHANDO...' : 'Ingresá tu consulta...'}
+            className="flex-1 bg-transparent py-4 pr-2 text-[14px] font-medium focus:outline-none placeholder:text-white/15"
+            style={{ fontFamily: 'inherit' }}
           />
+
+          {/* Send */}
           <button
             onClick={manejarEnvio}
             disabled={estaEscribiendo || !input.trim()}
             className={cn(
-              "absolute right-2.5 w-10 h-10 flex items-center justify-center rounded-xl transition-all",
-              input.trim() ? "premium-gradient text-white" : "text-white/20"
+              'w-10 h-10 mr-1.5 my-1.5 rounded-xl flex items-center justify-center transition-all shrink-0',
+              input.trim() && !estaEscribiendo
+                ? 'text-white shadow-lg'
+                : 'text-white/20 cursor-not-allowed'
             )}
+            style={input.trim() && !estaEscribiendo ? { background: 'var(--accent-main)', boxShadow: '0 0 12px rgba(0,212,255,0.28)' } : { background: 'rgba(255,255,255,0.04)' }}
           >
-            <Send size={18} />
+            <Send size={15} />
           </button>
         </div>
       </div>

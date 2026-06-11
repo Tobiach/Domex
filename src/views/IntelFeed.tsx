@@ -1,19 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  RotateCcw, 
-  Play, 
-  Pause, 
-  Square, 
-  ChevronRight, 
-  Sparkles,
-  Newspaper,
-  Volume2,
-  Brain,
-  TrendingUp,
-  Coins,
-  Search
-} from 'lucide-react';
+import { RotateCcw, Play, Pause, Square, ChevronRight, Sparkles, Newspaper, Volume2, Brain, TrendingUp, Coins, Search } from 'lucide-react';
 import { fetchIntelNews } from '../services/newsService';
 import { NewsItem } from '../types';
 import { cn } from '../lib/utils';
@@ -24,26 +11,31 @@ import { callGroqFast } from '../services/groqService';
 
 type Categoria = 'TODOS' | 'IA' | 'MERCADO' | 'CRIPTO' | 'PODER';
 
+const catColor = (cat: NewsItem['categoria']) => {
+  switch (cat) {
+    case 'IA':      return '#06B6D4';
+    case 'MERCADO': return '#F59E0B';
+    case 'CRIPTO':  return '#F97316';
+    case 'PODER':   return '#EF4444';
+  }
+};
+
 export default function IntelFeed() {
   const [noticias, setNoticias] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<Categoria>('TODOS');
-  const [briefing, setBriefing] = useState<string>('');
+  const [briefing, setBriefing] = useState('');
   const [loadingBriefing, setLoadingBriefing] = useState(false);
   const [reproduciendo, setReproduciendo] = useState(false);
   const [progresoAudio, setProgresoAudio] = useState(0);
-  const [palabraActualIndex, setPalabraActualIndex] = useState(-1);
-  const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
   const [velocidad, setVelocidad] = useState(1);
-  
+  const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null);
   const synth = window.speechSynthesis;
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     cargarNoticias();
-    return () => {
-      synth.cancel();
-    };
+    return () => { synth.cancel(); };
   }, []);
 
   const cargarNoticias = async () => {
@@ -52,74 +44,34 @@ export default function IntelFeed() {
     setNoticias(data);
     setUltimaActualizacion(new Date());
     setLoading(false);
-    
-    if (data.length > 0) {
-      generarBriefing(data.slice(0, 10));
-    }
+    if (data.length > 0) generarBriefing(data.slice(0, 10));
   };
 
   const generarBriefing = async (topNews: NewsItem[]) => {
     setLoadingBriefing(true);
     try {
-      const prompt = `Sos un analista financiero ejecutivo de alto nivel.
-      Resumí estas noticias en bullets concisos y potentes para un briefing de 60 segundos.
-      Enfócate en el impacto estratégico.
-      Cada bullet máximo 2 líneas. No uses negritas excesivas.
-      
-      Noticias:
-      ${topNews.map(n => `- [${n.categoria}] ${n.titulo}: ${n.resumen}`).join('\n')}
-      
-      Respondé SOLO con los bullets, empezando con •`;
-
+      const prompt = `Sos un analista ejecutivo. Resumí estas noticias en bullets concisos para un briefing de 60 segundos. Enfócate en impacto estratégico. Máx 2 líneas por bullet. Respondé SOLO con bullets empezando con •\n\n${topNews.map(n => `- [${n.categoria}] ${n.titulo}: ${n.resumen}`).join('\n')}`;
       const text = await callGroqFast([{ role: 'user', content: prompt }], { maxTokens: 512 });
-      setBriefing(text || 'No se pudo generar el briefing en este momento.');
-    } catch (error) {
-      console.error('Error generando briefing:', error);
-      setBriefing('• Hubo un error al procesar las noticias recientes.');
+      setBriefing(text || 'Error generando briefing.');
+    } catch {
+      setBriefing('• Error al procesar noticias recientes.');
     } finally {
       setLoadingBriefing(false);
     }
   };
 
   const manejarNarracion = (texto: string) => {
-    if (reproduciendo) {
-      synth.pause();
-      setReproduciendo(false);
-      return;
-    }
-
-    if (synth.paused) {
-      synth.resume();
-      setReproduciendo(true);
-      return;
-    }
-
+    if (reproduciendo) { synth.pause(); setReproduciendo(false); return; }
+    if (synth.paused) { synth.resume(); setReproduciendo(true); return; }
     synth.cancel();
-    
-    // Limpiar texto de markdown simple para voz
     const textoLimpio = texto.replace(/[•*#]/g, '').trim();
-    
     const utterance = new SpeechSynthesisUtterance(textoLimpio);
     utterance.lang = 'es-ES';
     utterance.rate = velocidad;
     utteranceRef.current = utterance;
-
     utterance.onstart = () => setReproduciendo(true);
-    utterance.onend = () => {
-      setReproduciendo(false);
-      setProgresoAudio(0);
-      setPalabraActualIndex(-1);
-    };
-    
-    utterance.onboundary = (event) => {
-      if (event.name === 'word') {
-        const charIndex = event.charIndex;
-        // Aproximar progreso
-        setProgresoAudio((charIndex / textoLimpio.length) * 100);
-        setPalabraActualIndex(charIndex);
-      }
-    };
-
+    utterance.onend = () => { setReproduciendo(false); setProgresoAudio(0); };
+    utterance.onboundary = (e) => { if (e.name === 'word') setProgresoAudio((e.charIndex / textoLimpio.length) * 100); };
     synth.speak(utterance);
   };
 
@@ -127,263 +79,218 @@ export default function IntelFeed() {
     synth.cancel();
     setReproduciendo(false);
     setProgresoAudio(0);
-    setPalabraActualIndex(-1);
   };
 
-  const noticiasFiltradas = activeFilter === 'TODOS' 
-    ? noticias 
-    : noticias.filter(n => n.categoria === activeFilter);
+  const noticiasFiltradas = activeFilter === 'TODOS' ? noticias : noticias.filter(n => n.categoria === activeFilter);
 
-  const getCategoriaIcon = (cat: Categoria) => {
-    switch (cat) {
-      case 'IA': return <Brain size={14} />;
-      case 'MERCADO': return <TrendingUp size={14} />;
-      case 'CRIPTO': return <Coins size={14} />;
-      case 'PODER': return <Search size={14} />;
-      default: return <Newspaper size={14} />;
-    }
-  };
-
-  const getCategoriaColor = (cat: NewsItem['categoria']) => {
-    switch (cat) {
-      case 'IA': return 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20';
-      case 'MERCADO': return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
-      case 'CRIPTO': return 'text-orange-400 bg-orange-400/10 border-orange-400/20';
-      case 'PODER': return 'text-rose-400 bg-rose-400/10 border-rose-400/20';
-    }
+  const getCatIcon = (cat: Categoria) => {
+    if (cat === 'IA') return <Brain size={11} />;
+    if (cat === 'MERCADO') return <TrendingUp size={11} />;
+    if (cat === 'CRIPTO') return <Coins size={11} />;
+    if (cat === 'PODER') return <Search size={11} />;
+    return <Newspaper size={11} />;
   };
 
   return (
-    <div className="space-y-8 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
       {/* Header */}
-      <div className="flex items-end justify-between px-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.4em]">
-              Intelligence Feed • {ultimaActualizacion ? `hace ${formatDistanceToNow(ultimaActualizacion, { locale: es })}` : 'Cargando...'}
-            </p>
+      <header className="flex justify-between items-start">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="live-dot live-dot-amber" />
+            <span className="sys-label">
+              {ultimaActualizacion
+                ? `ACTUALIZADO ${formatDistanceToNow(ultimaActualizacion, { locale: es }).toUpperCase()}`
+                : 'CARGANDO SEÑAL...'}
+            </span>
           </div>
-          <h1 className="text-4xl font-black tracking-tighter text-white">
-            Intel <span className="text-primary">Feed</span>
-          </h1>
+          <h1 className="text-3xl font-black tracking-tighter uppercase">Intel Feed</h1>
         </div>
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={cargarNoticias}
           disabled={loading}
-          className="w-12 h-12 rounded-2xl glass-card flex items-center justify-center text-white/60 hover:text-white transition-colors border-white/10"
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-white/30 hover:text-white/60 transition-colors"
+          style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}
         >
-          <RotateCcw size={20} className={loading ? "animate-spin" : ""} />
+          <RotateCcw size={15} className={loading ? 'animate-spin' : ''} />
         </motion.button>
-      </div>
+      </header>
 
-      {/* Briefing Section */}
-      <div className="glass-card rounded-[2.5rem] border-white/10 p-6 space-y-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
-          <motion.div 
-            className="h-full bg-primary shadow-[0_0_15px_var(--color-accent)]"
+      {/* Briefing card */}
+      <div className="bm-card relative overflow-hidden scanline">
+        {/* Audio progress bar */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <motion.div
+            className="h-full"
+            style={{ background: 'var(--accent-main)', boxShadow: '0 0 8px var(--color-accent)' }}
             animate={{ width: `${progresoAudio}%` }}
+            transition={{ duration: 0.1 }}
           />
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-              <Sparkles size={20} />
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+                <Sparkles size={16} style={{ color: 'var(--color-accent)' }} />
+              </div>
+              <div>
+                <p className="text-[13px] font-black tracking-tight leading-none">AICOLMENA BRIEFING</p>
+                <span className="sys-label mt-0.5 block" style={{ color: 'var(--color-accent)', opacity: 0.9 }}>ANÁLISIS IA · EJECUTIVO</span>
+              </div>
             </div>
-            <div>
-              <h3 className="font-black text-sm uppercase tracking-widest text-white">Domex Briefing</h3>
-              <p className="text-[10px] text-white/40 uppercase font-bold tracking-tighter">Resumen IA Directivo</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <select 
-              value={velocidad} 
+            <select
+              value={velocidad}
               onChange={(e) => setVelocidad(parseFloat(e.target.value))}
-              className="bg-white/5 border-none text-[10px] font-black text-white/60 px-2 py-1 rounded-lg outline-none cursor-pointer"
+              className="bg-transparent text-[9px] font-black text-white/30 outline-none cursor-pointer sys-label"
+              style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '4px 8px' }}
             >
-              <option value="0.8">0.8x</option>
-              <option value="1">1.0x</option>
-              <option value="1.2">1.2x</option>
-              <option value="1.5">1.5x</option>
+              <option value="0.8">0.8×</option>
+              <option value="1">1.0×</option>
+              <option value="1.2">1.2×</option>
+              <option value="1.5">1.5×</option>
             </select>
           </div>
-        </div>
 
-        <div className="relative group min-h-[200px]">
-          {loadingBriefing ? (
-            <div className="space-y-4 py-4">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-4 bg-white/5 rounded-full w-full animate-pulse" style={{ width: `${100 - i * 10}%` }} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-white/80 leading-relaxed font-medium">
-              <Markdown>{briefing}</Markdown>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => manejarNarracion(briefing)}
-            disabled={!briefing || loadingBriefing}
-            className={cn(
-              "flex-1 h-14 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-[0.2em] transition-all",
-              reproduciendo 
-                ? "bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]" 
-                : "bg-white text-black hover:bg-white/90"
-            )}
-          >
-            {reproduciendo ? (
-              <>
-                <Pause size={18} fill="currentColor" />
-                <span>Pausar</span>
-              </>
+          <div className="min-h-[120px] mb-4">
+            {loadingBriefing ? (
+              <div className="space-y-2 py-2">
+                {[100, 90, 80, 70].map((w, i) => (
+                  <div key={i} className="h-3 rounded-full animate-pulse" style={{ width: `${w}%`, background: 'rgba(255,255,255,0.05)' }} />
+                ))}
+              </div>
             ) : (
-              <>
-                <Play size={18} fill="currentColor" />
-                <span>Narrar Briefing</span>
-              </>
+              <div className="text-[13px] text-white/60 leading-relaxed">
+                <Markdown>{briefing}</Markdown>
+              </div>
             )}
-          </motion.button>
+          </div>
 
-          {reproduciendo && (
+          <div className="flex gap-2">
             <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={detenerNarracion}
-              className="w-14 h-14 rounded-2xl glass-card flex items-center justify-center text-rose-500 border-rose-500/20"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => manejarNarracion(briefing)}
+              disabled={!briefing || loadingBriefing}
+              className="flex-1 h-10 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] tracking-widest uppercase transition-all"
+              style={reproduciendo
+                ? { background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#F59E0B' }
+                : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' }
+              }
             >
-              <Square size={20} fill="currentColor" />
+              {reproduciendo ? <><Pause size={13} fill="currentColor" /> PAUSAR</> : <><Play size={13} fill="currentColor" /> NARRAR</>}
             </motion.button>
-          )}
+            {reproduciendo && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={detenerNarracion}
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}
+              >
+                <Square size={14} fill="currentColor" />
+              </motion.button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
+      {/* Filter chips */}
+      <div className="overflow-x-auto -mx-4 px-4 no-scrollbar">
         <div className="flex items-center gap-2 w-max">
-          {(['TODOS', 'IA', 'MERCADO', 'CRIPTO', 'PODER'] as Categoria[]).map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveFilter(cat)}
-              className={cn(
-                "px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap flex items-center gap-2",
-                activeFilter === cat 
-                  ? "bg-white text-black border-white" 
-                  : "bg-white/5 text-white/40 border-white/5 hover:border-white/20"
-              )}
-            >
-              {getCategoriaIcon(cat)}
-              {cat}
-              <span className={cn(
-                "ml-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px]",
-                activeFilter === cat ? "bg-black/10" : "bg-white/10"
-              )}>
-                {cat === 'TODOS' ? noticias.length : noticias.filter(n => n.categoria === cat).length}
-              </span>
-            </button>
-          ))}
+          {(['TODOS', 'IA', 'MERCADO', 'CRIPTO', 'PODER'] as Categoria[]).map((cat) => {
+            const active = activeFilter === cat;
+            const color = cat === 'TODOS' ? 'var(--color-accent)' : catColor(cat as any);
+            const count = cat === 'TODOS' ? noticias.length : noticias.filter(n => n.categoria === cat).length;
+            return (
+              <button
+                key={cat}
+                onClick={() => setActiveFilter(cat)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+                style={active
+                  ? { background: `${color}18`, border: `1px solid ${color}40`, color }
+                  : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }
+                }
+              >
+                {getCatIcon(cat)}
+                {cat}
+                <span className="sys-label px-1.5 py-0.5 rounded" style={{ background: active ? `${color}20` : 'rgba(255,255,255,0.05)', opacity: 1, color: active ? color : 'rgba(255,255,255,0.3)' }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* News List */}
-      <div className="space-y-4">
+      {/* News list */}
+      <div className="space-y-3">
         {loading ? (
           [1, 2, 3].map(i => (
-            <div key={i} className="glass-card rounded-3xl h-48 animate-pulse border-white/5" />
+            <div key={i} className="bm-card h-28 animate-pulse" />
           ))
         ) : (
-          noticiasFiltradas.map((noticia, idx) => (
-            <motion.div
-              layout
-              key={noticia.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="glass-card rounded-[2.5rem] border-white/10 overflow-hidden group hover:border-white/20 transition-colors"
-            >
-              <div className="flex flex-col sm:flex-row h-full">
-                {/* Image Section */}
-                <div className="sm:w-48 h-48 sm:h-auto relative overflow-hidden shrink-0 bg-white/5">
-                  {noticia.imagen ? (
-                    <img 
-                      src={noticia.imagen} 
-                      alt="" 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/10">
-                      <Newspaper size={48} />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent sm:hidden" />
-                  
-                  {/* Category Badge */}
-                  <div className={cn(
-                    "absolute top-4 left-4 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border backdrop-blur-md",
-                    getCategoriaColor(noticia.categoria)
-                  )}>
-                    {noticia.categoria}
-                  </div>
-                </div>
+          noticiasFiltradas.map((noticia, idx) => {
+            const color = catColor(noticia.categoria);
+            return (
+              <motion.div
+                layout
+                key={noticia.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04 }}
+                className="bm-card p-4 group hover:border-white/10 transition-all relative overflow-hidden"
+                style={{ '--bm-accent': color } as any}
+              >
+                {/* Category accent bar */}
+                <div className="absolute left-0 top-3 bottom-3 w-[2px] rounded-r opacity-60" style={{ background: color }} />
 
-                {/* Content Section */}
-                <div className="flex-1 p-6 flex flex-col justify-between space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-white/30 uppercase tracking-tighter">
-                      <span>{noticia.fuente}</span>
-                      <span>{formatDistanceToNow(new Date(noticia.fecha), { addSuffix: true, locale: es })}</span>
-                    </div>
-                    <h2 className="text-lg font-bold text-white leading-tight group-hover:text-primary transition-colors line-clamp-2">
-                      {noticia.titulo}
-                    </h2>
-                    <p className="text-sm text-white/50 leading-relaxed line-clamp-2">
-                      {noticia.resumen}
-                    </p>
+                <div className="pl-3">
+                  {/* Top row */}
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className="sys-label px-2 py-0.5 rounded-lg border"
+                      style={{ color, background: `${color}10`, borderColor: `${color}20`, opacity: 1 }}
+                    >
+                      {noticia.categoria}
+                    </span>
+                    <span className="sys-label">{formatDistanceToNow(new Date(noticia.fecha), { addSuffix: true, locale: es }).toUpperCase()}</span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-2">
-                      {noticia.personaje && (
-                        <div className="flex items-center gap-2 px-2 py-1 bg-white/5 rounded-lg border border-white/10 italic">
-                           <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-black">
-                             {noticia.personaje.charAt(0)}
-                           </div>
-                           <span className="text-[10px] text-white/60 font-medium">{noticia.personaje}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
+                  <h3 className="font-bold text-[13px] tracking-tight leading-snug mb-1 group-hover:text-white/90 transition-colors line-clamp-2">
+                    {noticia.titulo}
+                  </h3>
+                  <p className="text-[11px] text-white/35 leading-relaxed line-clamp-2 mb-3">
+                    {noticia.resumen}
+                  </p>
+
+                  <div className="flex items-center justify-between">
+                    <span className="sys-label">{noticia.fuente?.toUpperCase()}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
                         onClick={() => manejarNarracion(noticia.titulo + '. ' + noticia.resumen)}
-                        className="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-white/40 hover:text-primary transition-colors border-white/10"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/20 hover:text-white/50 transition-colors"
+                        style={{ border: '1px solid rgba(255,255,255,0.06)' }}
                       >
-                        <Volume2 size={16} />
-                      </motion.button>
-                      <a 
-                        href={noticia.url} 
-                        target="_blank" 
+                        <Volume2 size={12} />
+                      </button>
+                      <a
+                        href={noticia.url}
+                        target="_blank"
                         rel="noreferrer"
-                        className="h-10 px-4 rounded-xl glass-card flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all border-white/10"
+                        className="flex items-center gap-1 px-3 h-7 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors"
+                        style={{ border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
                       >
-                        <span>Detalles</span>
-                        <ChevronRight size={14} />
+                        VER <ChevronRight size={10} />
                       </a>
                     </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))
+              </motion.div>
+            );
+          })
         )}
       </div>
     </div>

@@ -1,4 +1,3 @@
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY as string;
 const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 const FAST_MODEL = 'llama-3.1-8b-instant';
 
@@ -17,12 +16,9 @@ export async function callGroq(
   messages: GroqMessage[],
   options?: GroqOptions
 ): Promise<string> {
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('/api/groq', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: options?.model ?? DEFAULT_MODEL,
       messages,
@@ -33,7 +29,7 @@ export async function callGroq(
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`Groq error ${response.status}: ${err}`);
+    throw new Error(`Groq proxy error ${response.status}: ${err}`);
   }
 
   const data = await response.json();

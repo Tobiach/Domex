@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'motion/react';
 import { 
   User, 
@@ -32,7 +32,7 @@ export default function More() {
       items: [
         { icon: User, etiqueta: 'Editar Perfil', sub: 'Cambia tu nombre y avatar', color: 'text-blue-500' },
         { icon: Shield, etiqueta: 'Seguridad', sub: 'Doble factor activo', color: 'text-emerald-500' },
-        { icon: Key, etiqueta: 'API Keys', sub: 'Conexiones externas Domex', color: 'text-amber-500' },
+        { icon: Key, etiqueta: 'API Keys', sub: 'Conexiones externas AIcolmena', color: 'text-amber-500' },
       ]
     },
     {
@@ -57,7 +57,7 @@ export default function More() {
         </div>
         <div>
           <h1 className="text-3xl font-black tracking-tighter">{usuario.nombre}</h1>
-          <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em] mt-1">Suscripción Domex Élite</p>
+          <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em] mt-1">Suscripción AIcolmena Élite</p>
         </div>
       </header>
 
@@ -95,7 +95,7 @@ export default function More() {
       </div>
 
       <div className="text-center pt-8 opacity-20">
-        <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1">Domex Systems Corp</p>
+        <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1">AIcolmena Systems Corp</p>
         <p className="text-[9px] font-medium italic">Versión Estable 4.5.2 "Atenas"</p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Check, 
@@ -122,7 +122,7 @@ export default function SmartTaskForm({ onClose }: Props) {
                   <Sparkles className="text-primary" size={18} />
                 </div>
                 <div className="flex-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-primary block mb-1">Optimización Domex AI</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary block mb-1">Optimización AIcolmena AI</span>
                   <p className="text-[13px] text-white/70 leading-relaxed">
                     {formData.titulo.length > 5 
                       ? `Esta tarea parece tener un impacto alto en tu objetivo de "Escalabilidad". ¿Deseas marcarla como FOCO?`
