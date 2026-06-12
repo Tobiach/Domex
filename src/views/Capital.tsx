@@ -70,18 +70,18 @@ export default function Capital() {
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl p-3" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
               <span className="sys-label block mb-1">INGRESOS</span>
-              <p className="text-base font-black sys-value text-emerald-400">+${ingresosDelMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+              <p className="text-[13px] font-black sys-value text-emerald-400 truncate">+${ingresosDelMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
               <span className="sys-label block mb-1">GASTOS</span>
-              <p className="text-base font-black sys-value text-red-400">-${gastosDelMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+              <p className="text-[13px] font-black sys-value text-red-400 truncate">-${gastosDelMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="rounded-xl p-3" style={{
               background: netMes >= 0 ? 'rgba(201,148,26,0.07)' : 'rgba(239,68,68,0.08)',
               border: `1px solid ${netMes >= 0 ? 'rgba(201,148,26,0.2)' : 'rgba(239,68,68,0.15)'}`,
             }}>
               <span className="sys-label block mb-1">NETO MES</span>
-              <p className="text-base font-black sys-value" style={{ color: netMes >= 0 ? 'var(--honey-bright)' : '#f87171' }}>
+              <p className="text-[13px] font-black sys-value truncate" style={{ color: netMes >= 0 ? 'var(--honey-bright)' : '#f87171' }}>
                 {netMes >= 0 ? '+' : ''}{netMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
               </p>
             </div>

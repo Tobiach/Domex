@@ -115,10 +115,10 @@ export default function Conciencia() {
       statLabel: 'HOY',
     },
     {
-      label: 'PATHS',
+      label: 'RUTAS',
       sublabel: learningPaths.length > 0
-        ? `${pathsActivos} activo${pathsActivos !== 1 ? 's' : ''} · ${learningPaths.length} total`
-        : 'Sin learning paths creados',
+        ? `${pathsActivos} activa${pathsActivos !== 1 ? 's' : ''} · ${learningPaths.length} total`
+        : 'Sin rutas de aprendizaje creadas',
       color: '#6366F1',
       icon: Map,
       path: '/conciencia/paths',

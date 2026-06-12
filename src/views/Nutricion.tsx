@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Utensils, Plus, X, Loader2, AlertTriangle, CheckCircle2, Barcode, ScanLine } from 'lucide-react';
+import { Utensils, Plus, X, Loader2, AlertTriangle, CheckCircle2, ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MealEntry } from '../types';
