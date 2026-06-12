@@ -13,6 +13,8 @@ import { AUTH_EMAIL_KEY } from '../../context/AuthContext';
 import { useAgendaNotifications } from '../../hooks/useAgendaNotifications';
 import { trackPage, trackModule, identifyUser } from '../../lib/analytics';
 import { logEvent } from '../../services/eventLog';
+import MiniAudioPlayer from '../MiniAudioPlayer';
+import CalendarModal from '../CalendarModal';
 
 const THEME_BG: Record<string, string> = {
   dark:     '#120D04',
@@ -27,6 +29,7 @@ export function MainLayout() {
   const { profile } = useUserProfile();
   const { mostrar, cerrar, repetir } = useBriefing();
   const [showTour, setShowTour] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const bgColor = THEME_BG[profile.visual?.theme ?? 'dark'] ?? '#06060E';
   const notifEnabled = localStorage.getItem('domex_notif_enabled') === 'true';
@@ -36,6 +39,12 @@ export function MainLayout() {
     document.body.style.backgroundColor = bgColor;
     return () => { document.body.style.backgroundColor = ''; };
   }, [bgColor]);
+
+  useEffect(() => {
+    const handler = () => setShowCalendar(true);
+    document.addEventListener('aicolmena:openCalendar', handler);
+    return () => document.removeEventListener('aicolmena:openCalendar', handler);
+  }, []);
 
   // Identify user (solo hash del email, nunca el email real)
   useEffect(() => {
@@ -136,11 +145,15 @@ export function MainLayout() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <MiniAudioPlayer />
       <QuickActions />
       <BottomNav />
 
       <AP>
         {mostrar && <BriefingMatutino onClose={cerrar} />}
+      </AP>
+      <AP>
+        {showCalendar && <CalendarModal onClose={() => setShowCalendar(false)} />}
       </AP>
 
       {/* New user tour */}

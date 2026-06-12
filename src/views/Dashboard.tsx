@@ -312,6 +312,31 @@ function NoticiaCard({ noticiasLeidas, marcarLeida }: { noticiasLeidas: string[]
   );
 }
 
+// ── GoldParticles ──────────────────────────────────────────────────
+
+function GoldParticles() {
+  const angles = [30, 100, 160, 220];
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 10 }}>
+      {angles.map((deg, i) => {
+        const rad = (deg * Math.PI) / 180;
+        const tx = Math.cos(rad) * 28;
+        const ty = Math.sin(rad) * 28;
+        return (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{ width: 5, height: 5, background: 'var(--honey-bright)', left: '50%', top: '50%', boxShadow: '0 0 6px var(--honey-core)', marginLeft: -2.5, marginTop: -2.5 }}
+            initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+            animate={{ x: tx, y: ty, opacity: 0, scale: 0.4 }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Dashboard ───────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -460,6 +485,7 @@ export default function Dashboard() {
 
           {tareasFoco.length > 0 ? (
             <div className="space-y-2">
+              <AnimatePresence>
               {tareasFoco.map((t, i) => {
                 const pStyle = PRIORIDAD_STYLE[t.prioridad as keyof typeof PRIORIDAD_STYLE] ?? PRIORIDAD_STYLE.media;
                 const iCfg = ICON_CONFIG[pStyle.iconType];
@@ -471,13 +497,17 @@ export default function Dashboard() {
                     layout
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 60, transition: { duration: 0.2 } }}
                     transition={{ delay: i * 0.05 }}
-                    className="flex items-center gap-3 rounded-[14px] px-3.5 py-3"
+                    className="relative flex items-center gap-3 rounded-[14px] px-3.5 py-3"
                     style={{
                       background: '#0D0B10',
                       border: `1px solid ${i === 0 ? 'rgba(201,148,26,0.2)' : 'rgba(255,255,255,0.05)'}`,
                     }}
                   >
+                    {/* Particles on complete */}
+                    {isCelebrating && <GoldParticles />}
+
                     {/* Icon box / complete button */}
                     <button
                       onClick={() => completarTarea(t.id)}
@@ -520,6 +550,7 @@ export default function Dashboard() {
                   </motion.div>
                 );
               })}
+              </AnimatePresence>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 gap-3 rounded-2xl"
@@ -611,10 +642,14 @@ export default function Dashboard() {
             {enMenosde30min && <div className="live-dot live-dot-amber" />}
           </motion.div>
         ) : (
-          <div className="bm-card p-4 flex items-center gap-3">
+          <button
+            onClick={() => document.dispatchEvent(new CustomEvent('aicolmena:openCalendar'))}
+            className="bm-card p-4 flex items-center gap-3 w-full text-left transition-opacity hover:opacity-80"
+          >
             <Calendar size={14} className="text-white/15 shrink-0" />
-            <span className="sys-label">SIN REUNIONES PROGRAMADAS</span>
-          </div>
+            <span className="sys-label flex-1">SIN REUNIONES PROGRAMADAS</span>
+            <span style={{ fontSize: 9, color: 'var(--honey-soft)', fontFamily: 'var(--font-display)', fontWeight: 700 }}>+ AGREGAR →</span>
+          </button>
         )}
 
         {/* ── CONCIENCIA INTEGRAL ── */}

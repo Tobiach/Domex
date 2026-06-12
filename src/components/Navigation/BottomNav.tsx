@@ -217,6 +217,7 @@ function VoiceFAB() {
       <button onClick={toggle} className="relative flex-shrink-0" aria-label="Activar voz">
         <motion.div
           animate={isActive ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+          whileHover={!isActive ? { scale: 1.05 } : undefined}
           transition={isActive ? { repeat: Infinity, duration: 1.2 } : {}}
           className="fab"
           style={{
@@ -448,7 +449,9 @@ export function BottomNav() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <item.icon size={18} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
+                <motion.div animate={{ scale: isActive ? 1.2 : 1 }} transition={{ duration: 0.15 }}>
+                  <item.icon size={18} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
+                </motion.div>
                 <span style={{ fontSize: 8, letterSpacing: '0.05em', fontWeight: 700, color: isActive ? 'var(--honey-soft)' : 'var(--text-tertiary)' }}>
                   {item.label}
                 </span>
@@ -473,7 +476,9 @@ export function BottomNav() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <item.icon size={18} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
+                <motion.div animate={{ scale: isActive ? 1.2 : 1 }} transition={{ duration: 0.15 }}>
+                  <item.icon size={18} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
+                </motion.div>
                 <span style={{ fontSize: 8, letterSpacing: '0.05em', fontWeight: 700, color: isActive ? 'var(--honey-soft)' : 'var(--text-tertiary)' }}>
                   {item.label}
                 </span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flame, Plus, Check, Trash2, X, Trophy, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -59,6 +59,13 @@ export default function Habitos() {
   const [nuevoTitulo, setNuevoTitulo] = useState('');
   const [nuevoIcono, setNuevoIcono] = useState('💪');
   const [celebrando, setCelebrando] = useState<string | null>(null);
+  const [showRecordBanner, setShowRecordBanner] = useState(false);
+
+  useEffect(() => {
+    if (!showRecordBanner) return;
+    const t = setTimeout(() => setShowRecordBanner(false), 3000);
+    return () => clearTimeout(t);
+  }, [showRecordBanner]);
 
   const completadosHoy = habitos.filter(h => h.completadoHoy).length;
   const rachaMaxima = habitos.reduce((max, h) => Math.max(max, h.racha), 0);
@@ -67,8 +74,11 @@ export default function Habitos() {
     : 0;
 
   const handleCompletar = (id: string) => {
+    const habito = habitos.find(h => h.id === id);
+    const isNewRecord = habito && !habito.completadoHoy && (habito.racha + 1 > rachaMaxima);
     completarHabito(id);
     setCelebrando(id);
+    if (isNewRecord) setShowRecordBanner(true);
     setTimeout(() => setCelebrando(null), 800);
   };
 
@@ -85,6 +95,28 @@ export default function Habitos() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+
+      {/* Record banner */}
+      <AnimatePresence>
+        {showRecordBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -48 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -48 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-safe"
+            style={{ paddingTop: 'env(safe-area-inset-top, 16px)' }}
+          >
+            <div className="flex items-center gap-2 px-6 py-3 rounded-b-2xl"
+              style={{ background: 'var(--honey-core)', boxShadow: '0 4px 24px rgba(201,148,26,0.45)' }}>
+              <span style={{ fontSize: 18 }}>🔥</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-on-honey)', fontFamily: 'var(--font-display)', letterSpacing: '0.02em' }}>
+                ¡Nueva racha máxima!
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <header className="flex justify-between items-start">
