@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Layers, Mic, BarChart2, User, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Home, Layers, Mic, BarChart2, User, X, CheckCircle, AlertCircle, Globe } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useVoiceEngine } from '../../hooks/useVoiceEngine';
 import { useApp } from '../../context/AppContext';
@@ -13,9 +13,50 @@ import { logEvent } from '../../services/eventLog';
 const NAV_ITEMS = [
   { icon: Home,      label: 'HOY',      path: '/' },
   { icon: Layers,    label: 'CONTEXTO', path: '/contexto' },
+  { icon: Globe,     label: 'MUNDO',    path: '/intel' },
   { icon: BarChart2, label: 'INSIGHTS', path: '/insights' },
   { icon: User,      label: 'YO',       path: '/yo' },
 ];
+
+const CATEGORIA_TOAST: Record<string, { label: string; route: string }> = {
+  tarea:   { label: 'Tarea guardada',     route: '/tasks' },
+  reunion: { label: 'Reunión agendada',   route: '/contexto' },
+  gasto:   { label: 'Gasto registrado',   route: '/capital' },
+  ingreso: { label: 'Ingreso registrado', route: '/capital' },
+  idea:    { label: 'Idea guardada',      route: '/ideas' },
+  nota:    { label: 'Nota guardada',      route: '/' },
+  habito:  { label: 'Hábito creado',      route: '/habitos' },
+  crm:     { label: 'Contacto guardado',  route: '/crm' },
+};
+
+function VoiceToast({ label, route, onClose }: { label: string; route: string; onClose: () => void }) {
+  const nav = useNavigate();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16 }}
+      transition={{ duration: 0.2 }}
+      className="fixed left-4 right-4 max-w-sm mx-auto z-50 flex items-center gap-3 px-4 py-3 rounded-xl"
+      style={{ bottom: 84, background: '#1A1A24', border: '1px solid rgba(201,148,26,0.3)' }}
+    >
+      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+        style={{ background: 'rgba(201,148,26,0.12)' }}>
+        <CheckCircle size={13} style={{ color: 'var(--honey-core)' }} />
+      </div>
+      <span className="flex-1 font-semibold" style={{ fontSize: 13, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+        {label}
+      </span>
+      <button
+        onClick={() => { onClose(); nav(route); }}
+        className="text-xs font-black shrink-0 transition-opacity hover:opacity-70"
+        style={{ color: 'var(--honey-bright)', fontSize: 11, fontFamily: 'var(--font-display)' }}
+      >
+        VER →
+      </button>
+    </motion.div>
+  );
+}
 
 const ESTADO_LABEL: Record<string, string> = {
   listening:  'ESCUCHANDO...',
@@ -94,11 +135,27 @@ function VoiceFAB() {
   const isSuccess = estado === 'success';
   const isError = estado === 'error';
 
+  const [pendingToast, setPendingToast] = React.useState<{ label: string; route: string } | null>(null);
+  const [toast, setToast] = React.useState<{ label: string; route: string } | null>(null);
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevEstado = React.useRef(estado);
+
   React.useEffect(() => {
     const handler = () => { unlockAudio(); if (!isActive) iniciar(); };
     document.addEventListener('aicolmena:openVoice', handler);
     return () => document.removeEventListener('aicolmena:openVoice', handler);
   }, [isActive]);
+
+  // Show toast when voice overlay closes (estado → idle)
+  React.useEffect(() => {
+    if (prevEstado.current !== 'idle' && estado === 'idle' && pendingToast) {
+      setToast(pendingToast);
+      setPendingToast(null);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(null), 3000);
+    }
+    prevEstado.current = estado;
+  }, [estado, pendingToast]);
 
   React.useEffect(() => {
     if (!resultado) return;
@@ -118,17 +175,21 @@ function VoiceFAB() {
     } else if (res.categoria === 'reunion') {
       agregarAgenda({ titulo: d.titulo ?? 'Reunión', fecha: d.fecha ?? now, hora: d.hora ?? '10:00', personas: d.personas ?? [], tipo: 'reunion' });
     } else if (res.categoria === 'gasto') {
-      agregarTransaccion({ tipo: 'gasto', monto: d.monto ?? 0, categoria: d.tag ?? 'General', descripcion: d.titulo ?? '' });
+      agregarTransaccion({ tipo: 'gasto', monto: d.monto ?? 0, categoria: d.tag ?? '', descripcion: d.titulo ?? '' });
     } else if (res.categoria === 'ingreso') {
-      agregarTransaccion({ tipo: 'ingreso', monto: d.monto ?? 0, categoria: 'Ventas', descripcion: d.titulo ?? '' });
+      agregarTransaccion({ tipo: 'ingreso', monto: d.monto ?? 0, categoria: d.tag ?? '', descripcion: d.titulo ?? '' });
     } else if (res.categoria === 'idea') {
       agregarIdea({ titulo: d.titulo ?? 'Nueva idea', descripcion: d.contexto ?? '', estado: 'idea', valorEstimado: 0, potencialMensual: 0 });
     } else if (res.categoria === 'habito') {
-      agregarHabito(d.titulo ?? 'Nuevo hábito', d.icono ?? '⚡');
+      agregarHabito(d.titulo ?? 'Nuevo hábito', d.icono ?? '⚡', d.hora ?? null, d.frecuencia ?? null);
     } else if (res.categoria === 'crm') {
       agregarContacto({ nombre: d.titulo ?? 'Contacto', empresa: d.empresa ?? '', estado: 'prospecto', valor: d.monto ?? 0 });
     }
     logEvent('voz_usado', res.categoria);
+    // Queue toast for when overlay closes
+    if (res.categoria && CATEGORIA_TOAST[res.categoria]) {
+      setPendingToast(CATEGORIA_TOAST[res.categoria]);
+    }
   }, [resultado]);
 
   const toggle = () => {
@@ -282,12 +343,29 @@ function VoiceFAB() {
 
             {/* Hint */}
             {isListening && (
-              <p className="absolute bottom-20 sys-label text-center"
+              <p className="absolute bottom-32 sys-label text-center px-6"
                 style={{ color: 'rgba(255,255,255,0.15)', letterSpacing: '0.12em' }}>
                 DICTÁ UNA TAREA · GASTO · IDEA · REUNIÓN
               </p>
             )}
+            {/* Cancel button bottom-center */}
+            {isListening && (
+              <button
+                onClick={() => { cancelar(); }}
+                className="absolute bottom-20 left-1/2 -translate-x-1/2 px-8 py-2.5 rounded-full transition-all active:scale-95"
+                style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: 'var(--font-body)' }}
+              >
+                Cancelar
+              </button>
+            )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Voice toast */}
+      <AnimatePresence>
+        {toast && (
+          <VoiceToast label={toast.label} route={toast.route} onClose={() => setToast(null)} />
         )}
       </AnimatePresence>
     </>
@@ -306,7 +384,7 @@ export function BottomNav() {
         paddingBottom: 'env(safe-area-inset-bottom, 12px)',
       }}
     >
-      <div className="flex items-center h-[60px] max-w-lg mx-auto px-4 gap-1">
+      <div className="flex items-center h-[60px] max-w-lg mx-auto px-2 gap-0">
         {NAV_ITEMS.slice(0, 2).map((item) => (
           <NavLink key={item.path} to={item.path} end={item.path === '/'} className="flex-1">
             {({ isActive }) => (
@@ -315,12 +393,12 @@ export function BottomNav() {
                   <motion.div
                     layoutId="nav-indicator"
                     className="absolute -top-[11px] left-1/2 -translate-x-1/2 rounded-full"
-                    style={{ width: 24, height: 2, background: 'var(--honey-core)' }}
+                    style={{ width: 20, height: 2, background: 'var(--honey-core)' }}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <item.icon size={20} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
-                <span style={{ fontSize: 9, letterSpacing: '0.06em', fontWeight: 700, color: isActive ? 'var(--honey-soft)' : 'var(--text-tertiary)' }}>
+                <item.icon size={18} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
+                <span style={{ fontSize: 8, letterSpacing: '0.05em', fontWeight: 700, color: isActive ? 'var(--honey-soft)' : 'var(--text-tertiary)' }}>
                   {item.label}
                 </span>
               </div>
@@ -328,7 +406,7 @@ export function BottomNav() {
           </NavLink>
         ))}
 
-        <div className="flex-shrink-0 flex items-center justify-center px-2 -mt-4">
+        <div className="flex-shrink-0 flex items-center justify-center px-1 -mt-4">
           <VoiceFAB />
         </div>
 
@@ -340,12 +418,12 @@ export function BottomNav() {
                   <motion.div
                     layoutId="nav-indicator"
                     className="absolute -top-[11px] left-1/2 -translate-x-1/2 rounded-full"
-                    style={{ width: 24, height: 2, background: 'var(--honey-core)' }}
+                    style={{ width: 20, height: 2, background: 'var(--honey-core)' }}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <item.icon size={20} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
-                <span style={{ fontSize: 9, letterSpacing: '0.06em', fontWeight: 700, color: isActive ? 'var(--honey-soft)' : 'var(--text-tertiary)' }}>
+                <item.icon size={18} style={{ color: isActive ? 'var(--honey-bright)' : 'var(--text-tertiary)' }} />
+                <span style={{ fontSize: 8, letterSpacing: '0.05em', fontWeight: 700, color: isActive ? 'var(--honey-soft)' : 'var(--text-tertiary)' }}>
                   {item.label}
                 </span>
               </div>

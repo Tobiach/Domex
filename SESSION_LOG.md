@@ -2,13 +2,13 @@
 # Actualizar al inicio y cierre de cada sesión
 
 ## ESTADO ACTUAL DEL PROYECTO
-ESTADO_APP: redesign-v2 COMPLETO — aguardando revisión visual para merge a main
+ESTADO_APP: redesign-v2 + ajuste visual HOY (Miel Fundida v2) — commit ba5b10d
 BRANCH_ACTIVA: redesign-v2
-ULTIMO_DEPLOY: 2026-06-11 — https://domex-temp.vercel.app (todos los 11 pasos)
+ULTIMO_DEPLOY: 2026-06-11 — https://domex-temp.vercel.app (HOY v2 live)
 BUGS_CRITICOS: 0
 TSC_ERRORS: 0
-FEATURE_ACTUAL: Redesign completo — 11/11 pasos
-PROXIMO_PASO: Revisión visual de Tobias → merge redesign-v2 → main
+FEATURE_ACTUAL: Pantalla HOY — Miel Fundida v2 spec aplicado
+PROXIMO_PASO: Tobias revisa HOY → ajustes adicionales si aplica → merge a main
 
 ## MÉTRICAS ACTUALES
 USUARIOS_PAGOS: 0

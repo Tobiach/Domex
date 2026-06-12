@@ -71,6 +71,8 @@ export interface Habito {
   completadoHoy: boolean;
   ultimaVez: string | null;
   creadoEn: string;
+  horario?: string | null;
+  frecuencia?: string | null;
 }
 
 export interface Transaccion {

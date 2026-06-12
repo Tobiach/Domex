@@ -1,15 +1,27 @@
-﻿import React from 'react';
-import { motion } from 'motion/react';
-import { ArrowUpRight, ArrowDownLeft, TrendingUp, Plus, Activity, History, Rocket, ChevronRight } from 'lucide-react';
+﻿import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ArrowUpRight, ArrowDownLeft, Activity, History, Rocket, ChevronRight, TrendingUp } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+const CATEGORIAS_GASTO = ['Alimentación','Transporte','Marketing','Salud','Educación','Entretenimiento','Servicios','Cuidado personal','Tecnología','Vivienda','Otros'];
+const CATEGORIAS_INGRESO = ['Ventas','Servicios','Inversiones','Freelance','Dividendos','Otros ingresos'];
+
 export default function Capital() {
-  const { balanceCalculado, transacciones, ideas } = useApp();
+  const { balanceCalculado, transacciones: allTransacciones, ideas, agregarTransaccion } = useApp();
   const navigate = useNavigate();
+  const [filtroCategoria, setFiltroCategoria] = useState<string>('todas');
+
+  const transacciones = filtroCategoria === 'todas'
+    ? allTransacciones
+    : filtroCategoria === 'sin-categoria'
+      ? allTransacciones.filter(t => !t.categoria)
+      : allTransacciones.filter(t => t.categoria === filtroCategoria);
+
+  const todasCategorias = Array.from(new Set(allTransacciones.map(t => t.categoria).filter(Boolean)));
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const ingresosDelMes = transacciones
@@ -65,11 +77,11 @@ export default function Capital() {
               <p className="text-base font-black sys-value text-red-400">-${gastosDelMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="rounded-xl p-3" style={{
-              background: netMes >= 0 ? 'rgba(0,212,255,0.07)' : 'rgba(239,68,68,0.08)',
-              border: `1px solid ${netMes >= 0 ? 'rgba(0,212,255,0.12)' : 'rgba(239,68,68,0.15)'}`,
+              background: netMes >= 0 ? 'rgba(201,148,26,0.07)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${netMes >= 0 ? 'rgba(201,148,26,0.2)' : 'rgba(239,68,68,0.15)'}`,
             }}>
               <span className="sys-label block mb-1">NETO MES</span>
-              <p className="text-base font-black sys-value" style={{ color: netMes >= 0 ? 'var(--color-accent)' : '#f87171' }}>
+              <p className="text-base font-black sys-value" style={{ color: netMes >= 0 ? 'var(--honey-bright)' : '#f87171' }}>
                 {netMes >= 0 ? '+' : ''}{netMes.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
               </p>
             </div>
@@ -112,8 +124,29 @@ export default function Capital() {
             <History size={13} className="text-white/30" />
             <span className="sys-label">MOVIMIENTOS RECIENTES</span>
           </div>
-          <span className="sys-label">TODOS →</span>
+          <span className="sys-label">{allTransacciones.length} TOTAL</span>
         </div>
+
+        {/* Category filter */}
+        {todasCategorias.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {['todas', ...todasCategorias, 'sin-categoria'].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFiltroCategoria(cat)}
+                className="whitespace-nowrap px-3 py-1.5 rounded-full font-bold transition-all"
+                style={{
+                  fontSize: 9, letterSpacing: '0.07em',
+                  background: filtroCategoria === cat ? 'rgba(201,148,26,0.2)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${filtroCategoria === cat ? 'rgba(201,148,26,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                  color: filtroCategoria === cat ? 'var(--honey-bright)' : 'var(--text-tertiary)',
+                }}
+              >
+                {cat === 'todas' ? 'TODAS' : cat === 'sin-categoria' ? 'SIN CATEGORÍA' : cat.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-2">
           {transacciones.length === 0 ? (
@@ -144,11 +177,17 @@ export default function Capital() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-[13px] tracking-tight truncate">{t.descripcion}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="sys-label">{t.categoria.toUpperCase()}</span>
+                <p className="font-bold text-[13px] tracking-tight truncate">{t.descripcion || 'Sin descripción'}</p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {t.categoria
+                    ? <span className="sys-label" style={{ color: 'var(--text-tertiary)' }}>{t.categoria}</span>
+                    : <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
+                        style={{ background: 'rgba(249,115,22,0.12)', color: '#F97316', border: '1px solid rgba(249,115,22,0.25)' }}>
+                        Categorizar
+                      </span>
+                  }
                   <span className="text-white/10">·</span>
-                  <span className="sys-label">{format(new Date(t.fecha), "dd MMM HH:mm").toUpperCase()}</span>
+                  <span className="sys-label">{format(new Date(t.fecha), "dd MMM").toUpperCase()}</span>
                 </div>
               </div>
 
@@ -160,18 +199,12 @@ export default function Capital() {
         </div>
       </section>
 
-      {/* Optimización */}
-      <div className="bm-card p-5 flex gap-4 items-start" style={{ borderColor: 'rgba(0,212,255,0.12)' }}>
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
-          <TrendingUp size={16} style={{ color: 'var(--color-accent)' }} />
+      {/* Empty state for no transactions after filter */}
+      {transacciones.length === 0 && allTransacciones.length > 0 && (
+        <div className="bm-card p-6 text-center">
+          <p className="sys-label">SIN MOVIMIENTOS EN ESTA CATEGORÍA</p>
         </div>
-        <div>
-          <span className="sys-label block mb-1" style={{ color: 'var(--color-accent)', opacity: 0.9 }}>ANÁLISIS AICOLMENA</span>
-          <p className="text-[12px] text-white/50 font-medium leading-relaxed">
-            Suscripciones bajaron un <span className="text-emerald-400 font-black">4%</span> este mes. Reinvertir delta en validación de ideas activas.
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

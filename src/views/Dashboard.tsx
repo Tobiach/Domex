@@ -2,14 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   TrendingUp, TrendingDown, Zap, Newspaper, Calendar,
-  Check, X, BookOpen, Utensils, Brain, Mic, ArrowUp, Play, Target,
+  Check, X, BookOpen, Utensils, Brain, Mic, ArrowUp, Play, Pause, RotateCcw, Target,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useApp } from '../context/AppContext';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useStreaks, calcScore, saveDailyScore, getDailyScores } from '../hooks/useStreaks';
 import { cn } from '../lib/utils';
-import { hablarTexto } from '../services/voiceService';
+import { hablarTexto, hablarConCallback, detenerVoz, pausarVoz, reanudarVoz } from '../services/voiceService';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -52,12 +52,41 @@ function BriefingHeroCard({ onPlay, text }: { onPlay?: () => void; text: string 
   const [escuchado, setEscuchado] = useState(() =>
     !!localStorage.getItem('domex_briefing_escuchado_' + new Date().toISOString().split('T')[0])
   );
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const startAudio = () => {
+    hablarConCallback(
+      text,
+      () => setIsPlaying(true),
+      () => { setIsPlaying(false); setIsPaused(false); }
+    );
+  };
 
   const handlePlay = () => {
+    if (isPlaying && !isPaused) {
+      pausarVoz();
+      setIsPaused(true);
+      return;
+    }
+    if (isPaused) {
+      reanudarVoz();
+      setIsPaused(false);
+      return;
+    }
     const key = 'domex_briefing_escuchado_' + new Date().toISOString().split('T')[0];
     localStorage.setItem(key, '1');
     setEscuchado(true);
+    setIsPlaying(true);
+    startAudio();
     onPlay?.();
+  };
+
+  const handleRestart = () => {
+    detenerVoz();
+    setIsPlaying(false);
+    setIsPaused(false);
+    setTimeout(() => { setIsPlaying(true); startAudio(); }, 100);
   };
 
   return (
@@ -96,21 +125,26 @@ function BriefingHeroCard({ onPlay, text }: { onPlay?: () => void; text: string 
 
       {/* Body */}
       <div className="flex gap-3.5 items-start">
-        {/* Play button with pulse ring */}
+        {/* Play/Pause button with pulse ring */}
         <div className="relative flex-shrink-0 flex items-center justify-center" style={{ width: 54, height: 54 }}>
-          <motion.div
-            className="absolute rounded-full pointer-events-none"
-            style={{ width: 66, height: 66, border: '1px solid rgba(201,148,26,0.25)' }}
-            animate={{ scale: [1, 1.1], opacity: [0.6, 0.15] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
-          />
+          {isPlaying && !isPaused && (
+            <motion.div
+              className="absolute rounded-full pointer-events-none"
+              style={{ width: 66, height: 66, border: '1px solid rgba(201,148,26,0.25)' }}
+              animate={{ scale: [1, 1.1], opacity: [0.6, 0.15] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
+            />
+          )}
           <button
             onClick={handlePlay}
             className="flex items-center justify-center rounded-full transition-all active:scale-95 relative"
             style={{ width: 54, height: 54, background: 'var(--honey-core)', flexShrink: 0 }}
-            aria-label="Reproducir briefing"
+            aria-label={isPlaying && !isPaused ? 'Pausar briefing' : 'Reproducir briefing'}
           >
-            <Play size={20} style={{ color: '#1A1206', marginLeft: 2 }} fill="#1A1206" />
+            {isPlaying && !isPaused
+              ? <Pause size={20} style={{ color: '#1A1206' }} fill="#1A1206" />
+              : <Play size={20} style={{ color: '#1A1206', marginLeft: 2 }} fill="#1A1206" />
+            }
           </button>
         </div>
 
@@ -128,16 +162,28 @@ function BriefingHeroCard({ onPlay, text }: { onPlay?: () => void; text: string 
           {/* Waveform decoration */}
           <div className="flex items-center gap-0.5 mt-1.5">
             {WAVE_HEIGHTS.map((h, i) => (
-              <div key={i} style={{ width: 3, height: h, background: 'var(--honey-core)', opacity: 0.5, borderRadius: 2, flexShrink: 0 }} />
+              <div key={i} style={{ width: 3, height: h, background: 'var(--honey-core)', opacity: isPlaying && !isPaused ? 1 : 0.5, borderRadius: 2, flexShrink: 0, transition: 'opacity 0.3s' }} />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <p className="mt-2" style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'var(--font-body)' }}>
-        30 seg · Generado para hoy · Nova
-      </p>
+      {/* Footer with restart button */}
+      <div className="mt-2 flex items-center justify-between">
+        <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'var(--font-body)' }}>
+          30 seg · Generado para hoy · Nova
+        </p>
+        {isPlaying && (
+          <button
+            onClick={handleRestart}
+            className="flex items-center gap-1 transition-opacity hover:opacity-60"
+            style={{ fontSize: 9, color: 'var(--text-tertiary)', fontFamily: 'var(--font-display)' }}
+          >
+            <RotateCcw size={10} />
+            REINICIAR
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }

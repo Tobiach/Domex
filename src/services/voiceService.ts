@@ -76,6 +76,22 @@ export function detenerVoz(): void {
   window.speechSynthesis.cancel();
 }
 
+export function pausarVoz(): void {
+  if ('speechSynthesis' in window) window.speechSynthesis.pause();
+}
+
+export function reanudarVoz(): void {
+  if ('speechSynthesis' in window) window.speechSynthesis.resume();
+}
+
+export function estaHablando(): boolean {
+  return 'speechSynthesis' in window && window.speechSynthesis.speaking && !window.speechSynthesis.paused;
+}
+
+export function estaPausado(): boolean {
+  return 'speechSynthesis' in window && window.speechSynthesis.paused;
+}
+
 export function hablarConCallback(
   texto: string,
   onStart: () => void,

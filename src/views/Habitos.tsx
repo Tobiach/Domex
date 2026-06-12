@@ -6,6 +6,23 @@ import { cn } from '../lib/utils';
 
 const ICONOS = ['💪', '📚', '🧘', '💧', '🏃', '📞', '✍️', '🎯', '🌅', '🧠', '🥗', '😴'];
 
+function SemanaCirculos({ racha, completadoHoy }: { racha: number; completadoHoy: boolean }) {
+  return (
+    <div className="flex gap-1.5 mt-1.5">
+      {Array.from({ length: 7 }, (_, i) => {
+        const fromRight = 6 - i;
+        const filled = fromRight === 0 ? completadoHoy : fromRight < racha;
+        return (
+          <div key={i} style={{
+            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+            background: filled ? 'var(--honey-core)' : 'rgba(255,255,255,0.08)',
+          }} />
+        );
+      })}
+    </div>
+  );
+}
+
 function RingProgress({ value, total }: { value: number; total: number }) {
   const pct = total > 0 ? value / total : 0;
   const r = 52;
@@ -141,7 +158,7 @@ export default function Habitos() {
 
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-[15px] tracking-tight leading-tight">{habito.titulo}</p>
-                      <div className="flex items-center gap-1.5 mt-1">
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <div className={cn(
                           "flex items-center gap-1 px-2 py-0.5 rounded-full",
                           habito.racha >= 21 ? "bg-orange-500/20" :
@@ -156,10 +173,22 @@ export default function Habitos() {
                             habito.racha >= 21 ? "text-orange-400" :
                             habito.racha >= 7 ? "text-amber-400" : "text-white/30"
                           )}>
-                            {habito.racha} días
+                            {habito.racha}d
                           </span>
                         </div>
+                        {habito.horario && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'rgba(201,148,26,0.1)', color: 'var(--honey-core)', border: '1px solid rgba(201,148,26,0.2)' }}>
+                            ⏰ {habito.horario}
+                          </span>
+                        )}
+                        {habito.frecuencia && (
+                          <span className="text-[9px] font-bold" style={{ color: 'var(--text-tertiary)' }}>
+                            {habito.frecuencia}
+                          </span>
+                        )}
                       </div>
+                      <SemanaCirculos racha={habito.racha} completadoHoy={habito.completadoHoy} />
                     </div>
 
                     <button

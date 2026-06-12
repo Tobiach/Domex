@@ -6,10 +6,83 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { useStreaks } from '../hooks/useStreaks';
 
+function ResumenSemanal({ tareas, habitos, transacciones, learningLessons }: {
+  tareas: any[]; habitos: any[]; transacciones: any[]; learningLessons: any[];
+}) {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+  const tareasCompletadas = tareas.filter(t => t.completada).length;
+  const totalTareas = tareas.length;
+  const habitosActivos = habitos.length;
+  const rachaMax = habitos.reduce((max: number, h: any) => Math.max(max, h.racha ?? 0), 0);
+  const gastosEstaSemana = transacciones
+    .filter((t: any) => t.tipo === 'gasto' && t.fecha >= sevenDaysAgo)
+    .reduce((sum: number, t: any) => sum + t.monto, 0);
+  const briefingsEscuchados = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    return !!localStorage.getItem('domex_briefing_escuchado_' + d);
+  }).filter(Boolean).length;
+  const leccionesCompletadas = learningLessons.filter((l: any) => l.completado).length;
+  const hayDatos = tareasCompletadas > 0 || habitosActivos > 0 || gastosEstaSemana > 0 || briefingsEscuchados > 0 || leccionesCompletadas > 0;
+
+  return (
+    <div className="bm-card p-4" style={{ background: 'var(--bg-surface-warm)', border: '1px solid rgba(201,148,26,0.15)' }}>
+      <p className="sys-label mb-3" style={{ color: 'var(--honey-core)', opacity: 1 }}>RESUMEN DE LA SEMANA</p>
+      {!hayDatos ? (
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
+          Empezá a usar AIcolmena y acá vas a ver tu resumen.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {totalTareas > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Tareas completadas</span>
+              <span className="text-xs font-black" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                {tareasCompletadas} de {totalTareas}
+              </span>
+            </div>
+          )}
+          {habitosActivos > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Hábitos activos</span>
+              <span className="text-xs font-black" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                {habitosActivos} · racha máx. {rachaMax}d
+              </span>
+            </div>
+          )}
+          {gastosEstaSemana > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Gastos esta semana</span>
+              <span className="text-xs font-black" style={{ color: 'var(--danger)', fontFamily: 'var(--font-display)' }}>
+                −${gastosEstaSemana.toLocaleString('es-AR')}
+              </span>
+            </div>
+          )}
+          {briefingsEscuchados > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Briefings escuchados</span>
+              <span className="text-xs font-black" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                {briefingsEscuchados} de 7
+              </span>
+            </div>
+          )}
+          {leccionesCompletadas > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Lecciones completadas</span>
+              <span className="text-xs font-black" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                {leccionesCompletadas}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Yo() {
   const { profile } = useUserProfile();
   const { logout } = useAuth();
-  const { tareas, ideas, transacciones } = useApp();
+  const { tareas, ideas, transacciones, habitos, learningLessons } = useApp();
   const streak = useStreaks();
   const navigate = useNavigate();
 
@@ -43,6 +116,9 @@ export default function Yo() {
           <span className="chip mt-1">Beta · Plan Gratis</span>
         </div>
       </div>
+
+      {/* Resumen semanal */}
+      <ResumenSemanal tareas={tareas} habitos={habitos} transacciones={transacciones} learningLessons={learningLessons} />
 
       {/* Stats de uso */}
       <div className="grid grid-cols-3 gap-2">
