@@ -139,6 +139,10 @@ function VoiceFAB() {
   const [toast, setToast] = React.useState<{ label: string; route: string } | null>(null);
   const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevEstado = React.useRef(estado);
+  const [pendingSave, setPendingSave] = React.useState<typeof resultado | null>(null);
+
+  // Threshold for auto-save vs suggestion card
+  const CONFIDENCE_AUTOSAVE = 85;
 
   React.useEffect(() => {
     const handler = () => { unlockAudio(); if (!isActive) iniciar(); };
@@ -157,17 +161,7 @@ function VoiceFAB() {
     prevEstado.current = estado;
   }, [estado, pendingToast]);
 
-  React.useEffect(() => {
-    if (!resultado) return;
-    const res = resultado;
-    hablarConCallback(res.respuestaAlUsuario, () => {}, () => dismissarExito());
-    if (res.accion === 'navegar' && res.datos?.destino) {
-      const route = DESTINO_ROUTES[res.datos.destino];
-      if (route) { setTimeout(() => navigate(route), 800); }
-      return;
-    }
-    if (res.tipo !== 'COMANDO' || res.accion !== 'guardar') return;
-    if ((res.confianza ?? 0) < CONFIDENCE_THRESHOLD) return;
+  const ejecutarGuardado = React.useCallback((res: NonNullable<typeof resultado>) => {
     const d = res.datos ?? {};
     const now = new Date().toISOString();
     if (res.categoria === 'tarea') {
@@ -186,9 +180,28 @@ function VoiceFAB() {
       agregarContacto({ nombre: d.titulo ?? 'Contacto', empresa: d.empresa ?? '', estado: 'prospecto', valor: d.monto ?? 0 });
     }
     logEvent('voz_usado', res.categoria);
-    // Queue toast for when overlay closes
     if (res.categoria && CATEGORIA_TOAST[res.categoria]) {
       setPendingToast(CATEGORIA_TOAST[res.categoria]);
+    }
+  }, [agregarTarea, agregarAgenda, agregarTransaccion, agregarIdea, agregarHabito, agregarContacto]);
+
+  React.useEffect(() => {
+    if (!resultado) return;
+    const res = resultado;
+    hablarConCallback(res.respuestaAlUsuario, () => {}, () => dismissarExito());
+    if (res.accion === 'navegar' && res.datos?.destino) {
+      const route = DESTINO_ROUTES[res.datos.destino];
+      if (route) { setTimeout(() => navigate(route), 800); }
+      return;
+    }
+    if (res.tipo !== 'COMANDO' || res.accion !== 'guardar') return;
+    const conf = res.confianza ?? 0;
+    if (conf < CONFIDENCE_THRESHOLD) return;
+    if (conf >= CONFIDENCE_AUTOSAVE) {
+      ejecutarGuardado(res);
+    } else {
+      // Ambiguous zone (72-84): show suggestion card
+      setPendingSave(res);
     }
   }, [resultado]);
 
@@ -304,19 +317,57 @@ function VoiceFAB() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="mt-6 max-w-xs text-center"
+                className="mt-6 max-w-xs text-center w-full px-4"
               >
                 <p className="text-base font-medium leading-relaxed"
                   style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
                   {resultado.respuestaAlUsuario}
                 </p>
-                <button
-                  onClick={() => dismissarExito()}
-                  className="mt-6 px-8 py-3 rounded-full font-bold text-sm transition-all active:scale-95"
-                  style={{ background: 'var(--honey-core)', color: 'var(--text-on-honey)', boxShadow: 'var(--glow-honey)' }}
-                >
-                  Entendido
-                </button>
+
+                {/* Suggestion card for ambiguous intent */}
+                {pendingSave && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    className="mt-4 rounded-2xl p-4 text-left"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(91,33,182,0.25)' }}
+                  >
+                    <p className="text-[13px] font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>
+                      No encontré una acción clara.
+                    </p>
+                    <p className="text-[11px] mb-3" style={{ color: 'var(--text-tertiary)' }}>
+                      ¿Querías guardar esto como{' '}
+                      <span style={{ color: 'var(--honey-bright)' }}>{pendingSave.categoria ?? 'nota'}</span>?
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { ejecutarGuardado(pendingSave); setPendingSave(null); dismissarExito(); }}
+                        className="flex-1 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                        style={{ background: 'var(--honey-core)', color: 'var(--text-on-honey)' }}
+                      >
+                        Sí, guardar como {pendingSave.categoria ?? 'nota'}
+                      </button>
+                      <button
+                        onClick={() => { setPendingSave(null); dismissarExito(); }}
+                        className="px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)', border: '1px solid rgba(255,255,255,0.08)' }}
+                      >
+                        Descartar
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {!pendingSave && (
+                  <button
+                    onClick={() => dismissarExito()}
+                    className="mt-6 px-8 py-3 rounded-full font-bold text-sm transition-all active:scale-95"
+                    style={{ background: 'var(--honey-core)', color: 'var(--text-on-honey)', boxShadow: 'var(--glow-honey)' }}
+                  >
+                    Entendido
+                  </button>
+                )}
               </motion.div>
             )}
 
