@@ -95,6 +95,12 @@ function VoiceFAB() {
   const isError = estado === 'error';
 
   React.useEffect(() => {
+    const handler = () => { unlockAudio(); if (!isActive) iniciar(); };
+    document.addEventListener('aicolmena:openVoice', handler);
+    return () => document.removeEventListener('aicolmena:openVoice', handler);
+  }, [isActive]);
+
+  React.useEffect(() => {
     if (!resultado) return;
     const res = resultado;
     hablarConCallback(res.respuestaAlUsuario, () => {}, () => dismissarExito());

@@ -6,9 +6,10 @@
 
 :root {
   /* ── 80% EL ESPACIO ── */
-  --bg-primary:    #0A0A0F;
-  --bg-surface:    #12121A;
-  --bg-elevated:   #1A1A24;
+  --bg-primary:      #0A0A0F;
+  --bg-surface:      #12121A;
+  --bg-surface-warm: #0F0D08;
+  --bg-elevated:     #1A1A24;
   --border-subtle: rgba(255,255,255,0.06);
   --border-default:rgba(255,255,255,0.10);
 
@@ -23,6 +24,8 @@
   --honey-bright:  #F0B429;
   --honey-soft:    #F5D77E;
   --honey-glow:    rgba(201,148,26,0.15);
+  --honey-border:  rgba(201,148,26,0.3);
+  --honey-bg-warm: #0F0D08;
 
   /* ── COMPLEMENTARIOS ── */
   --amber-deep:    #92670F;
@@ -30,11 +33,13 @@
   --success:       #34D399;
   --danger:        #F87171;
   --info:          #60A5FA;
+  --teal:          #5EEAD4;
 
   /* ── TEXTO ── */
   --text-primary:   #F9FAFB;
   --text-secondary: #9CA3AF;
   --text-tertiary:  #6B7280;
+  --text-muted:     #374151;
   --text-on-honey:  #1A1206;
 
   /* ── TIPOGRAFÍA ── */
