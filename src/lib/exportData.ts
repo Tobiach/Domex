@@ -57,7 +57,7 @@ export function exportToCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `domex_export_${date}.csv`;
+  a.download = `aicolmena_export_${date}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

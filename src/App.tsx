@@ -6,7 +6,7 @@ import { MainLayout } from './components/Layout/MainLayout';
 import { initAnalytics } from './lib/analytics';
 
 const Dashboard   = lazy(() => import('./views/Dashboard'));
-const DomexAI     = lazy(() => import('./views/DomexAI'));
+const AIcolmenaAI = lazy(() => import('./views/AIcolmenaAI'));
 const Ideas       = lazy(() => import('./views/Ideas'));
 const Tasks       = lazy(() => import('./views/Tasks'));
 const Capital     = lazy(() => import('./views/Capital'));
@@ -69,7 +69,7 @@ export default function App() {
           } />
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
-            <Route path="chat"       element={<Suspense fallback={<PageLoader />}><DomexAI /></Suspense>} />
+            <Route path="chat"       element={<Suspense fallback={<PageLoader />}><AIcolmenaAI /></Suspense>} />
             <Route path="ideas"      element={<Suspense fallback={<PageLoader />}><Ideas /></Suspense>} />
             <Route path="tasks"      element={<Suspense fallback={<PageLoader />}><Tasks /></Suspense>} />
             <Route path="crm"        element={<Suspense fallback={<PageLoader />}><CRM /></Suspense>} />

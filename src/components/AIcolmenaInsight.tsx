@@ -56,7 +56,7 @@ Sé específico con los números del contexto.`;
   return textoLimpio;
 }
 
-export default function DomexInsight() {
+export default function AIcolmenaInsight() {
   const { tareas, ideas, balanceCalculado, mercado, agenda } = useApp();
   const { profile } = useUserProfile();
   const streak = useStreaks();

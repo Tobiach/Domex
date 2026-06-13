@@ -32,7 +32,7 @@ function TypingDots() {
   );
 }
 
-export default function DomexAI() {
+export default function AIcolmenaAI() {
   const { mensajes, agregarMensaje, limpiarMensajes, tareas, usuario, ideas } = useApp();
   const { profile } = useUserProfile();
   const [input, setInput] = useState('');
