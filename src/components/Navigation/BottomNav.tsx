@@ -1,14 +1,15 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Layers, Mic, BarChart2, User, X, CheckCircle, AlertCircle, Globe } from 'lucide-react';
+import { Home, Layers, Mic, BarChart2, User, X, CheckCircle, AlertCircle, Globe, Keyboard, Send } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { useVoiceEngine } from '../../hooks/useVoiceEngine';
+import { useVoiceEngine, SPEECH_SUPPORT } from '../../hooks/useVoiceEngine';
 import { useApp } from '../../context/AppContext';
 import { useStreaks } from '../../hooks/useStreaks';
 import { hablarConCallback, detenerVoz, unlockAudio } from '../../services/voiceService';
 import { UserContext, VoiceIntelligenceResult, DESTINO_ROUTES, CONFIDENCE_THRESHOLD } from '../../services/voiceProcessor';
 import { logEvent } from '../../services/eventLog';
+import { solicitarPermiso } from '../../services/notificationService';
 
 const NAV_ITEMS = [
   { icon: Home,      label: 'HOY',      path: '/' },
@@ -127,7 +128,7 @@ function VoiceFAB() {
     return { btcChange, ethChange, todayTasks, streak, nextMeetings, newsCount: 0 };
   };
 
-  const { estado, transcriptLive, resultado, errorMsg, iniciar, cancelar, dismissarExito } = useVoiceEngine(buildContext);
+  const { estado, transcriptLive, resultado, errorMsg, iniciar, cancelar, dismissarExito, processText } = useVoiceEngine(buildContext);
 
   const isActive = estado !== 'idle';
   const isListening = estado === 'listening';
@@ -140,6 +141,11 @@ function VoiceFAB() {
   const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevEstado = React.useRef(estado);
   const [pendingSave, setPendingSave] = React.useState<typeof resultado | null>(null);
+  const [pendingMonto, setPendingMonto] = React.useState<typeof resultado | null>(null);
+  const [montoInput, setMontoInput] = React.useState('');
+  // Text input mode: activated when no Speech API support or user requests it
+  const [showTextPanel, setShowTextPanel] = React.useState(false);
+  const [textInputValue, setTextInputValue] = React.useState('');
 
   // Threshold for auto-save vs suggestion card
   const CONFIDENCE_AUTOSAVE = 85;
@@ -168,27 +174,48 @@ function VoiceFAB() {
       agregarTarea({ titulo: d.titulo ?? 'Nueva tarea', prioridad: (d.prioridad as any) ?? 'media', fechaVencimiento: d.fecha ?? now, esFoco: false });
     } else if (res.categoria === 'reunion') {
       agregarAgenda({ titulo: d.titulo ?? 'Reunión', fecha: d.fecha ?? now, hora: d.hora ?? '10:00', personas: d.personas ?? [], tipo: 'reunion' });
-    } else if (res.categoria === 'gasto') {
-      agregarTransaccion({ tipo: 'gasto', monto: d.monto ?? 0, categoria: d.tag ?? '', descripcion: d.titulo ?? '' });
-    } else if (res.categoria === 'ingreso') {
-      agregarTransaccion({ tipo: 'ingreso', monto: d.monto ?? 0, categoria: d.tag ?? '', descripcion: d.titulo ?? '' });
+    } else if (res.categoria === 'gasto' || res.categoria === 'ingreso') {
+      // T8: si el monto es null, mostrar prompt en lugar de guardar con 0
+      if (d.monto === null || d.monto === undefined) {
+        setPendingMonto(res);
+        setMontoInput('');
+        return;
+      }
+      const desc = d.moneda === 'USD' ? `${d.titulo ?? ''} (USD)` : d.titulo ?? '';
+      agregarTransaccion({ tipo: res.categoria, monto: d.monto, categoria: d.tag ?? '', descripcion: desc });
     } else if (res.categoria === 'idea') {
       agregarIdea({ titulo: d.titulo ?? 'Nueva idea', descripcion: d.contexto ?? '', estado: 'idea', valorEstimado: 0, potencialMensual: 0 });
+    } else if (res.categoria === 'nota') {
+      agregarIdea({ titulo: d.titulo ?? d.contexto ?? 'Nota', descripcion: d.contexto ?? '', estado: 'idea', valorEstimado: 0, potencialMensual: 0 });
     } else if (res.categoria === 'habito') {
       agregarHabito(d.titulo ?? 'Nuevo hábito', d.icono ?? '⚡', d.hora ?? null, d.frecuencia ?? null);
+      // T9: solicitar permiso y programar notificación si tiene horario
+      if (d.hora) {
+        solicitarPermiso().then(granted => {
+          if (!granted) return;
+          try {
+            const notifs = JSON.parse(localStorage.getItem('domex_habit_notifs') || '[]');
+            notifs.push({ titulo: d.titulo ?? 'Hábito', hora: d.hora, creadoEn: Date.now() });
+            localStorage.setItem('domex_habit_notifs', JSON.stringify(notifs));
+          } catch { /* silent */ }
+        });
+      }
     } else if (res.categoria === 'crm') {
       agregarContacto({ nombre: d.titulo ?? 'Contacto', empresa: d.empresa ?? '', estado: 'prospecto', valor: d.monto ?? 0 });
     }
     logEvent('voz_usado', res.categoria);
-    if (res.categoria && CATEGORIA_TOAST[res.categoria]) {
-      setPendingToast(CATEGORIA_TOAST[res.categoria]);
+    if (res.categoria && CATEGORIA_TOAST[res.categoria as keyof typeof CATEGORIA_TOAST]) {
+      setPendingToast(CATEGORIA_TOAST[res.categoria as keyof typeof CATEGORIA_TOAST]);
     }
   }, [agregarTarea, agregarAgenda, agregarTransaccion, agregarIdea, agregarHabito, agregarContacto]);
 
   React.useEffect(() => {
     if (!resultado) return;
     const res = resultado;
-    hablarConCallback(res.respuestaAlUsuario, () => {}, () => dismissarExito());
+    hablarConCallback(res.respuestaAlUsuario, () => {}, () => {
+      // Solo auto-dismiss si no hay cards pendientes
+      if (!pendingMonto) dismissarExito();
+    });
     if (res.accion === 'navegar' && res.datos?.destino) {
       const route = DESTINO_ROUTES[res.datos.destino];
       if (route) { setTimeout(() => navigate(route), 800); }
@@ -200,7 +227,7 @@ function VoiceFAB() {
     if (conf >= CONFIDENCE_AUTOSAVE) {
       ejecutarGuardado(res);
     } else {
-      // Ambiguous zone (72-84): show suggestion card
+      // Zona ambigua (75-84): mostrar card de sugerencia
       setPendingSave(res);
     }
   }, [resultado]);
@@ -208,11 +235,73 @@ function VoiceFAB() {
   const toggle = () => {
     unlockAudio();
     if (isActive && !isSuccess && !isError) { cancelar(); detenerVoz(); }
-    else if (!isActive) iniciar();
+    else if (!isActive) {
+      if (!SPEECH_SUPPORT) {
+        setTextInputValue('');
+        setShowTextPanel(true);
+      } else {
+        iniciar();
+      }
+    }
+  };
+
+  const handleTextSubmit = () => {
+    const text = textInputValue.trim();
+    if (!text) return;
+    setShowTextPanel(false);
+    setTextInputValue('');
+    processText(text);
   };
 
   return (
     <>
+      {/* Text input panel — shown when Speech API not available */}
+      <AnimatePresence>
+        {showTextPanel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+            style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)' }}
+          >
+            <button
+              onClick={() => setShowTextPanel(false)}
+              className="absolute top-12 right-6 flex items-center justify-center rounded-full"
+              style={{ width: 40, height: 40, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
+            >
+              <X size={18} color="var(--text-secondary)" />
+            </button>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-8"
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--honey-border)' }}>
+              <Keyboard size={28} style={{ color: 'var(--honey-core)' }} />
+            </div>
+            <p className="sys-label mb-6" style={{ color: 'var(--honey-soft)', letterSpacing: '0.2em' }}>
+              ESCRIBÍ TU NOTA
+            </p>
+            <textarea
+              autoFocus
+              value={textInputValue}
+              onChange={e => setTextInputValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTextSubmit(); } }}
+              placeholder="Tarea, gasto, idea, reunión..."
+              rows={3}
+              className="w-full max-w-xs rounded-2xl px-4 py-3 text-sm resize-none outline-none"
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--honey-border)', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
+            />
+            <button
+              onClick={handleTextSubmit}
+              disabled={!textInputValue.trim()}
+              className="mt-4 flex items-center gap-2 px-8 py-3 rounded-full font-black text-[11px] uppercase tracking-widest disabled:opacity-30"
+              style={{ background: 'var(--honey-core)', color: 'var(--text-on-honey)' }}
+            >
+              <Send size={13} /> Procesar
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* FAB button */}
       <button onClick={toggle} className="relative flex-shrink-0" aria-label="Activar voz">
         <motion.div
@@ -335,19 +424,18 @@ function VoiceFAB() {
                     style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(91,33,182,0.25)' }}
                   >
                     <p className="text-[13px] font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>
-                      No encontré una acción clara.
+                      No encontré una acción clara para eso.
                     </p>
                     <p className="text-[11px] mb-3" style={{ color: 'var(--text-tertiary)' }}>
-                      ¿Querías guardar esto como{' '}
-                      <span style={{ color: 'var(--honey-bright)' }}>{pendingSave.categoria ?? 'nota'}</span>?
+                      ¿Querías guardar esto como nota?
                     </p>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { ejecutarGuardado(pendingSave); setPendingSave(null); dismissarExito(); }}
+                        onClick={() => { ejecutarGuardado({ ...pendingSave, categoria: 'nota' }); setPendingSave(null); dismissarExito(); }}
                         className="flex-1 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
                         style={{ background: 'var(--honey-core)', color: 'var(--text-on-honey)' }}
                       >
-                        Sí, guardar como {pendingSave.categoria ?? 'nota'}
+                        Guardar como nota
                       </button>
                       <button
                         onClick={() => { setPendingSave(null); dismissarExito(); }}
@@ -360,7 +448,56 @@ function VoiceFAB() {
                   </motion.div>
                 )}
 
-                {!pendingSave && (
+                {/* T8: prompt de monto cuando gasto/ingreso sin monto */}
+                {pendingMonto && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="mt-4 rounded-2xl p-4 text-left w-full"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--honey-border)' }}
+                  >
+                    <p className="text-[12px] font-bold mb-3" style={{ color: 'var(--text-secondary)' }}>
+                      ¿Cuánto fue? Ingresá el monto para guardarlo.
+                    </p>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      autoFocus
+                      value={montoInput}
+                      onChange={e => setMontoInput(e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-transparent outline-none text-2xl font-black text-center mb-3"
+                      style={{ color: 'var(--honey-bright)', borderBottom: '1px solid var(--honey-border)' }}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const monto = parseFloat(montoInput.replace(',', '.'));
+                          if (!monto || monto <= 0) return;
+                          ejecutarGuardado({ ...pendingMonto, datos: { ...pendingMonto.datos, monto } });
+                          setPendingMonto(null);
+                          setMontoInput('');
+                          dismissarExito();
+                        }}
+                        disabled={!parseFloat(montoInput) || parseFloat(montoInput) <= 0}
+                        className="flex-1 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-30"
+                        style={{ background: 'var(--honey-core)', color: 'var(--text-on-honey)' }}
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        onClick={() => { setPendingMonto(null); setMontoInput(''); dismissarExito(); }}
+                        className="px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)', border: '1px solid rgba(255,255,255,0.08)' }}
+                      >
+                        Descartar
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {!pendingSave && !pendingMonto && (
                   <button
                     onClick={() => dismissarExito()}
                     className="mt-6 px-8 py-3 rounded-full font-bold text-sm transition-all active:scale-95"
@@ -383,13 +520,22 @@ function VoiceFAB() {
                   style={{ color: 'var(--text-secondary)' }}>
                   {errorMsg || 'No se pudo procesar el comando.'}
                 </p>
-                <button
-                  onClick={() => { cancelar(); }}
-                  className="mt-4 px-6 py-2.5 rounded-full text-sm font-semibold transition-all"
-                  style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
-                >
-                  Cerrar
-                </button>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => { cancelar(); }}
+                    className="px-6 py-2.5 rounded-full text-sm font-semibold transition-all"
+                    style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={() => { cancelar(); setTextInputValue(''); setShowTextPanel(true); }}
+                    className="px-6 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5"
+                    style={{ background: 'rgba(201,148,26,0.1)', color: 'var(--honey-bright)', border: '1px solid var(--honey-border)' }}
+                  >
+                    <Keyboard size={13} /> Escribir
+                  </button>
+                </div>
               </motion.div>
             )}
 
