@@ -1,4 +1,4 @@
-﻿import { callGroqFast } from './groqService';
+﻿import { callGroqWithFallback } from './groqService';
 
 export interface UserContext {
   btcChange: number;
@@ -37,6 +37,7 @@ export interface VoiceDatos {
   empresa?: string | null;
   tag?: string | null;
   destino?: string | null;
+  moneda?: string | null;
 }
 
 export interface VoiceIntelligenceResult {
@@ -78,7 +79,7 @@ export const DESTINO_ROUTES: Record<string, string> = {
 };
 
 // Minimum confidence to execute a COMANDO (lower → show success but don't write)
-export const CONFIDENCE_THRESHOLD = 72;
+export const CONFIDENCE_THRESHOLD = 75;
 
 export async function procesarVozInteligente(
   transcript: string,
@@ -113,9 +114,13 @@ COMANDO/reunion — agendar reunión, llamada, juntada
 COMANDO/gasto — registrar GASTO, pago, compra, inversión
   Claves: "gasté", "invertí", "pagué", "compré", "gasto de", "salió", "me costó", "pagué por"
   NUNCA usar para cobros/ingresos
+  Campo "tag": categoría del gasto. Opciones: Alimentación, Transporte, Marketing, Salud, Educación, Entretenimiento, Servicios, Cuidado personal, Tecnología, Vivienda, Otros
+  Si no se menciona categoría, "tag": null
 
 COMANDO/ingreso — registrar INGRESO, cobro, pago recibido
   Claves: "cobré", "me pagaron", "me pagó", "llegó el pago", "llegó el depósito", "ingresé", "me transfirieron", "me depositaron", "facturé", "cobré del cliente", "me debían y pagaron", "entró plata", "cerramos la venta"
+  Campo "tag": categoría del ingreso. Opciones: Ventas, Servicios, Inversiones, Freelance, Dividendos, Otros ingresos
+  Si no se menciona categoría, inferir de contexto. Si no hay contexto, "tag": null
 
 COMANDO/idea — nueva idea de negocio, proyecto o solución
   Claves: "idea:", "qué tal si", "podríamos", "nueva idea", "se me ocurrió", "startup", "y si hacemos", "pensé en", "proyecto nuevo"
@@ -151,6 +156,7 @@ CONVERSACIÓN — saludo, agradecimiento, charla casual
 10. respuestaAlUsuario: jerga rioplatense, 1 frase. Ej: "Dale, tarea guardada.", "Ya quedó la reunión.", "Re bien, hábito creado.", "Listo, ingreso registrado.", "Copado, anotado.", "Para allá voy."
 11. confianza: 70-100. Dudoso → 70-75
 12. datos SIEMPRE presente en COMANDO aunque campos sean null
+13. moneda: "dólares/USD/USDT/en dólares/billete verde" → "USD"; "pesos/ARS" o sin mención → "ARS"
 
 ═══ FORMATOS ═══
 
@@ -161,10 +167,10 @@ HÁBITO:
 {"tipo":"COMANDO","categoria":"habito","accion":"guardar","datos":{"titulo":"Meditar","fecha":null,"hora":"08:00","monto":null,"personas":[],"contexto":"mañana","prioridad":"normal","frecuencia":"diaria","icono":"🧘","empresa":null,"tag":null,"destino":null},"confianza":93,"respuestaAlUsuario":"Hábito 'Meditar' creado."}
 
 GASTO:
-{"tipo":"COMANDO","categoria":"gasto","accion":"guardar","datos":{"titulo":"Nafta","fecha":"${hoyStr}","hora":null,"monto":5000,"personas":[],"contexto":"nafta","prioridad":"normal","frecuencia":null,"icono":null,"empresa":null,"tag":null,"destino":null},"confianza":95,"respuestaAlUsuario":"Mandado el gasto."}
+{"tipo":"COMANDO","categoria":"gasto","accion":"guardar","datos":{"titulo":"Almuerzo en restaurante","fecha":"${hoyStr}","hora":null,"monto":5000,"personas":[],"contexto":"almuerzo restaurante","prioridad":"normal","frecuencia":null,"icono":null,"empresa":null,"tag":"Alimentación","destino":null,"moneda":"ARS"},"confianza":95,"respuestaAlUsuario":"Mandado el gasto."}
 
 INGRESO:
-{"tipo":"COMANDO","categoria":"ingreso","accion":"guardar","datos":{"titulo":"Cliente X","fecha":"${hoyStr}","hora":null,"monto":80000,"personas":["Cliente X"],"contexto":"pago cliente","prioridad":"normal","frecuencia":null,"icono":null,"empresa":null,"tag":null,"destino":null},"confianza":95,"respuestaAlUsuario":"Listo, ingreso registrado."}
+{"tipo":"COMANDO","categoria":"ingreso","accion":"guardar","datos":{"titulo":"Cliente X","fecha":"${hoyStr}","hora":null,"monto":80000,"personas":["Cliente X"],"contexto":"pago cliente","prioridad":"normal","frecuencia":null,"icono":null,"empresa":null,"tag":"Ventas","destino":null,"moneda":"ARS"},"confianza":95,"respuestaAlUsuario":"Listo, ingreso registrado."}
 
 CRM:
 {"tipo":"COMANDO","categoria":"crm","accion":"guardar","datos":{"titulo":"Lucas","fecha":null,"hora":null,"monto":null,"personas":["Lucas"],"contexto":"inversor crypto","prioridad":"normal","frecuencia":null,"icono":null,"empresa":null,"tag":"inversor crypto","destino":null},"confianza":91,"respuestaAlUsuario":"Lucas guardado como lead."}
@@ -180,7 +186,7 @@ CONVERSACIÓN:
 
 RESPONDÉ SOLO JSON. SIN TEXTO EXTRA.`;
 
-  const text = await callGroqFast(
+  const text = await callGroqWithFallback(
     [{ role: 'user', content: prompt }],
     { maxTokens: 450, temperature: 0.1 }
   );

@@ -1,10 +1,39 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Utensils, Plus, X, Loader2, ChevronLeft, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Utensils, Plus, X, Loader2, AlertTriangle, CheckCircle2, ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { MealEntry } from '../types';
 import { analizarComida } from '../services/nutritionService';
+
+interface ProductoBarcode {
+  nombre: string;
+  calorias: number;
+  proteina: number;
+  carbohidratos: number;
+  grasas: number;
+  imagen?: string;
+}
+
+async function fetchBarcode(barcode: string): Promise<ProductoBarcode | null> {
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,nutriments,image_url`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status !== 1) return null;
+    const n = data.product?.nutriments ?? {};
+    return {
+      nombre: data.product?.product_name || 'Producto sin nombre',
+      calorias: Math.round(n['energy-kcal_100g'] ?? 0),
+      proteina: Math.round(n.proteins_100g ?? 0),
+      carbohidratos: Math.round(n.carbohydrates_100g ?? 0),
+      grasas: Math.round(n.fat_100g ?? 0),
+      imagen: data.product?.image_url,
+    };
+  } catch {
+    return null;
+  }
+}
 
 const TIPOS: MealEntry['tipo'][] = ['desayuno', 'almuerzo', 'merienda', 'cena', 'snack'];
 const TIPO_LABELS: Record<MealEntry['tipo'], string> = {
@@ -34,9 +63,14 @@ export default function Nutricion() {
   const { mealEntries, registrarComida } = useApp();
 
   const [showForm, setShowForm] = useState(false);
+  const [modoEntrada, setModoEntrada] = useState<'descripcion' | 'barcode'>('descripcion');
   const [tipo, setTipo] = useState<MealEntry['tipo']>('almuerzo');
   const [descripcion, setDescripcion] = useState('');
   const [analizando, setAnalizando] = useState(false);
+  const [barcode, setBarcode] = useState('');
+  const [buscandoBarcode, setBuscandoBarcode] = useState(false);
+  const [productoBarcode, setProductoBarcode] = useState<ProductoBarcode | null>(null);
+  const [errorBarcode, setErrorBarcode] = useState('');
 
   const hoy = new Date().toISOString().split('T')[0];
   const mealshoy = mealEntries.filter(m => m.creadoEn.startsWith(hoy));
@@ -67,15 +101,12 @@ export default function Nutricion() {
       setDescripcion('');
       setShowForm(false);
     } catch {
-      // mostrar el registro con valores 0 si falla IA
       const meal: MealEntry = {
         id: `meal_${Date.now()}`,
         timestamp: new Date().toISOString(),
         tipo,
         descripcion: descripcion.trim(),
-        calorias: 0,
-        azucar: 0,
-        proteina: 0,
+        calorias: 0, azucar: 0, proteina: 0,
         procesada: 'natural',
         analisisIA: 'Sin análisis disponible.',
         creadoEn: new Date().toISOString(),
@@ -86,6 +117,35 @@ export default function Nutricion() {
     } finally {
       setAnalizando(false);
     }
+  };
+
+  const handleBuscarBarcode = async () => {
+    if (!barcode.trim()) return;
+    setBuscandoBarcode(true);
+    setErrorBarcode('');
+    setProductoBarcode(null);
+    const producto = await fetchBarcode(barcode.trim());
+    setBuscandoBarcode(false);
+    if (!producto) { setErrorBarcode('Producto no encontrado. Verificá el código.'); return; }
+    setProductoBarcode(producto);
+  };
+
+  const handleRegistrarBarcode = () => {
+    if (!productoBarcode) return;
+    const meal: MealEntry = {
+      id: `meal_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      tipo,
+      descripcion: productoBarcode.nombre,
+      calorias: productoBarcode.calorias,
+      azucar: 0,
+      proteina: productoBarcode.proteina,
+      procesada: 'semi-procesada',
+      analisisIA: `Macros por 100g: ${productoBarcode.calorias}kcal · ${productoBarcode.proteina}g prot · ${productoBarcode.carbohidratos}g carb · ${productoBarcode.grasas}g grasas`,
+      creadoEn: new Date().toISOString(),
+    };
+    registrarComida(meal);
+    setBarcode(''); setProductoBarcode(null); setShowForm(false);
   };
 
   return (
@@ -204,47 +264,124 @@ export default function Nutricion() {
               <div className="px-6 pb-10 pt-2 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="sys-label" style={{ color: '#10B981', opacity: 1 }}>REGISTRAR COMIDA</span>
-                  <button onClick={() => setShowForm(false)}><X size={14} className="text-white/30" /></button>
+                  <button onClick={() => { setShowForm(false); setProductoBarcode(null); setBarcode(''); setErrorBarcode(''); }}>
+                    <X size={14} className="text-white/30" />
+                  </button>
                 </div>
 
-                {/* Tipo selector */}
+                {/* Mode selector */}
+                <div className="flex gap-2">
+                  {[
+                    { key: 'descripcion', label: 'Descripción', Icon: Utensils },
+                    { key: 'barcode', label: 'Código de barras', Icon: ScanLine },
+                  ].map(({ key, label, Icon }) => (
+                    <button key={key} onClick={() => setModoEntrada(key as any)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all"
+                      style={{
+                        background: modoEntrada === key ? '#10B98118' : 'rgba(255,255,255,0.03)',
+                        border: modoEntrada === key ? '1px solid #10B98140' : '1px solid rgba(255,255,255,0.07)',
+                        color: modoEntrada === key ? '#10B981' : 'rgba(255,255,255,0.3)',
+                      }}>
+                      <Icon size={11} />{label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tipo selector (both modes) */}
                 <div className="flex gap-2 flex-wrap">
                   {TIPOS.map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setTipo(t)}
+                    <button key={t} onClick={() => setTipo(t)}
                       className="px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all"
                       style={{
                         background: tipo === t ? '#10B98118' : 'rgba(255,255,255,0.04)',
                         border: tipo === t ? '1px solid #10B98140' : '1px solid rgba(255,255,255,0.07)',
                         color: tipo === t ? '#10B981' : 'rgba(255,255,255,0.3)',
-                      }}
-                    >
+                      }}>
                       {TIPO_LABELS[t]}
                     </button>
                   ))}
                 </div>
 
-                <textarea
-                  value={descripcion}
-                  onChange={e => setDescripcion(e.target.value)}
-                  placeholder='Ej: "2 huevos, tostada integral, café con leche"'
-                  rows={3}
-                  className="w-full rounded-xl p-3 text-[13px] text-white bg-transparent resize-none outline-none"
-                  style={{ border: '1px solid rgba(255,255,255,0.1)' }}
-                />
+                {modoEntrada === 'descripcion' ? (
+                  <>
+                    <textarea
+                      value={descripcion}
+                      onChange={e => setDescripcion(e.target.value)}
+                      placeholder='Ej: "2 huevos, tostada integral, café con leche"'
+                      rows={3}
+                      className="w-full rounded-xl p-3 text-[13px] text-white bg-transparent resize-none outline-none"
+                      style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
+                    <button
+                      onClick={handleRegistrar}
+                      disabled={analizando || !descripcion.trim()}
+                      className="w-full h-12 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                      style={{ background: '#10B981', color: '#fff' }}
+                    >
+                      {analizando
+                        ? <><Loader2 size={13} className="animate-spin" /> ANALIZANDO CON IA...</>
+                        : <><CheckCircle2 size={12} /> REGISTRAR Y ANALIZAR</>
+                      }
+                    </button>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={barcode}
+                        onChange={e => setBarcode(e.target.value.replace(/\D/g, ''))}
+                        onKeyDown={e => e.key === 'Enter' && handleBuscarBarcode()}
+                        placeholder="Ingresá el código (ej: 7790895000064)"
+                        className="flex-1 rounded-xl px-4 py-3 text-[13px] text-white bg-transparent outline-none"
+                        style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+                      />
+                      <button
+                        onClick={handleBuscarBarcode}
+                        disabled={buscandoBarcode || !barcode.trim()}
+                        className="px-4 rounded-xl font-black text-[10px] transition-all disabled:opacity-40"
+                        style={{ background: '#10B981', color: '#fff' }}
+                      >
+                        {buscandoBarcode ? <Loader2 size={14} className="animate-spin" /> : 'BUSCAR'}
+                      </button>
+                    </div>
 
-                <button
-                  onClick={handleRegistrar}
-                  disabled={analizando || !descripcion.trim()}
-                  className="w-full h-12 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-                  style={{ background: '#10B981', color: '#fff' }}
-                >
-                  {analizando
-                    ? <><Loader2 size={13} className="animate-spin" /> ANALIZANDO CON IA...</>
-                    : <><CheckCircle2 size={12} /> REGISTRAR Y ANALIZAR</>
-                  }
-                </button>
+                    {errorBarcode && (
+                      <p className="text-[11px]" style={{ color: 'var(--danger)' }}>{errorBarcode}</p>
+                    )}
+
+                    {productoBarcode && (
+                      <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                        {productoBarcode.imagen && (
+                          <img src={productoBarcode.imagen} alt={productoBarcode.nombre} className="w-16 h-16 object-contain mx-auto rounded-lg" />
+                        )}
+                        <p className="font-black text-[14px] text-center">{productoBarcode.nombre}</p>
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          {[
+                            { l: 'KCAL', v: productoBarcode.calorias },
+                            { l: 'PROT', v: `${productoBarcode.proteina}g` },
+                            { l: 'CARB', v: `${productoBarcode.carbohidratos}g` },
+                            { l: 'GRAS', v: `${productoBarcode.grasas}g` },
+                          ].map(x => (
+                            <div key={x.l}>
+                              <p className="font-black text-[13px]" style={{ color: '#10B981' }}>{x.v}</p>
+                              <p className="sys-label">{x.l}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="sys-label text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>Macros por 100g · Open Food Facts</p>
+                        <button
+                          onClick={handleRegistrarBarcode}
+                          className="w-full h-11 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                          style={{ background: '#10B981', color: '#fff' }}
+                        >
+                          REGISTRAR ESTE PRODUCTO
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </>

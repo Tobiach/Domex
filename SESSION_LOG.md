@@ -2,72 +2,71 @@
 # Actualizar al inicio y cierre de cada sesión
 
 ## ESTADO ACTUAL DEL PROYECTO
-ESTADO_APP: producción
-ULTIMO_DEPLOY: [completar]
+ESTADO_APP: redesign-v2 + ajuste visual HOY (Miel Fundida v2) — commit ba5b10d
+BRANCH_ACTIVA: redesign-v2
+ULTIMO_DEPLOY: 2026-06-11 — https://domex-temp.vercel.app (HOY v2 live)
 BUGS_CRITICOS: 0
-FEATURE_ACTUAL: [completar con lo que se está construyendo]
-PRIORIDAD_SEMANA: [completar]
+TSC_ERRORS: 0
+FEATURE_ACTUAL: Pantalla HOY — Miel Fundida v2 spec aplicado
+PROXIMO_PASO: Tobias revisa HOY → ajustes adicionales si aplica → merge a main
 
 ## MÉTRICAS ACTUALES
-USUARIOS_BETA: [completar]
 USUARIOS_PAGOS: 0
 MRR_ACTUAL: $0
-D7_RETENTION: [completar cuando haya data]
-D30_RETENTION: [completar cuando haya data]
 
-## DECISIONES PENDIENTES
-- localStorage persistence para AppContext
+## PROTOCOLO DE ROLLBACK
+- Volver atrás: `git checkout main`
+- Restaurar desde tag: `git checkout v1-estable-pre-redesign`
+- Merge a main: NO hacer sin confirmación explícita de Tobias
+- Deploy producción: ya deployado en domex-temp.vercel.app (branch redesign-v2)
+
+## REDESIGN — 11/11 PASOS COMPLETOS
+
+| Paso | Descripción | Commit |
+|------|-------------|--------|
+| 0 | Backup: checkpoint + tag v1-estable-pre-redesign + branch redesign-v2 | ae0cf9c |
+| 1 | Design tokens: tokens.css, paleta Miel Fundida completa | 6cbe41a |
+| 2 | Tipografía: Space Grotesk + Inter en index.html | 6cbe41a |
+| 3 | Tab bar: 4 tabs (HOY/CONTEXTO/INSIGHTS/YO) + FAB central de voz | 30f3eed |
+| 4 | Dashboard HOY: BriefingHeroCard + 3 prioridades + ScoreCircle honey | 9619fd4 |
+| 5 | VoicePanel fullscreen: transcript live, estados, éxito/error animados | 9619fd4 |
+| 6 | CONTEXTO: tabs internos (Tareas/Ideas/Finanzas/Personas) | 6f9dca0 |
+| 7 | Onboarding 3 pasos: nombre+rol+hora / pain point / karaoke aha moment | ab3e96b |
+| 8 | INSIGHTS: stats + LineChart score + BarChart finanzas periodo selector | 9619fd4 |
+| 8 | YO: stats uso + balance + plan + logout | 9619fd4 |
+| 9 | Saludo horario correcto (buenos días/tardes/noches) | anterior |
+| 10 | Karaoke briefing: sync palabra a palabra con onboundary + fallback timer | ab3e96b |
+| 11 | Empty states personalidad (Tasks/Ideas/Capital/CRM/Habitos) + skeleton mercado | aa5afdb |
+
+## ARCHIVOS CLAVE CREADOS/MODIFICADOS
+- `src/styles/tokens.css` — sistema de diseño completo (Miel Fundida)
+- `src/components/Navigation/BottomNav.tsx` — tab bar + FAB + VoicePanel overlay
+- `src/views/Dashboard.tsx` — pantalla HOY con skeleton mercado
+- `src/views/Contexto.tsx` — pantalla CONTEXTO (nueva)
+- `src/views/Insights.tsx` — pantalla INSIGHTS con charts (nueva)
+- `src/views/Yo.tsx` — pantalla YO con stats (nueva)
+- `src/views/Onboarding.tsx` — 3 pasos + karaoke (reescrito)
+- `src/views/Tasks.tsx / Ideas.tsx / Capital.tsx / CRM.tsx / Habitos.tsx` — empty states
+
+## DECISIONES TÉCNICAS
+- VoicePanel integrado en BottomNav (no portal) — más simple, funciona igual
+- Karaoke usa speechSynthesis.onboundary con fallback a interval timer (mobile compatibility)
+- Onboarding: email es opcional — genera ID anónimo si no se ingresa
+- Conciencia usa grid 2×2 (no 3-col con orphan)
+- ScoreCircle migrado de cyan (#00D4FF) a honey tokens
+
+## PENDIENTE (post-merge)
+- Configurar alias aicolmena.vercel.app en Vercel dashboard (manual)
 - Push notifications retención D1/D3/D7
-- Resumen semanal automático día 7
-- Fallback Groq → OpenAI en downtime
+- Supabase setup tabla early_access
+
+## PRÓXIMOS 3 PASOS
+1. Tobias revisa visualmente https://domex-temp.vercel.app
+2. Si OK → `git checkout main && git merge redesign-v2` (con confirmación explícita)
+3. Deploy desde main → alias aicolmena.vercel.app
 
 ## HISTORIAL DE SESIONES
 
-### 2026-06-11 — Auditoría completa + fixes español + detección hora
-COMPLETADO:
-- Tarea 1: "/homme" no encontrado en el proyecto
-- Tarea 2: no existen widgets de música ni clima
-- Tarea 3: detección de hora corregida en Dashboard.tsx (0-4h ahora es "Buenas noches", no "Buenos días"). BriefingMatutino ya estaba correcto.
-- Tarea 4: PENDIENTE confirmación — noticias/objetivos hardcodeados listados, esperando aprobación
-- Tarea 5 fixes aplicados: "Tasks"→"Tareas", "Settings"→"Configuración" (Tasks.tsx, Settings.tsx, Landing.tsx, Onboarding.tsx)
-
-ARCHIVOS MODIFICADOS:
-- src/views/Dashboard.tsx (saludo 0-4h corregido)
-- src/views/Tasks.tsx ("Tasks" → "Tareas")
-- src/views/Settings.tsx ("Settings" → "Configuración")
-- src/views/Landing.tsx ("Tasks" → "Tareas" en ticker)
-- src/views/Onboarding.tsx ("Settings" → "Configuración")
-
-DEUDA TÉCNICA IDENTIFICADA:
-- 20 `any` sin tipar en 11 archivos
-- newsService.ts tiene noticias mock con url:'#' como fallback
-- console.error en 7 archivos de catch (aceptable, pero sin logger centralizado)
-
-PRÓXIMOS PASOS:
-1. Confirmar Tarea 4 → eliminar noticias y objetivos hardcodeados de AppContext.tsx
-2. Recibir CLAUDE_CODE_MASTER.md (Google Doc privado — no accesible aún)
-3. Implementar P1 BACKLOG: Push notification D1 retención
-
-### 2026-06-10 — Setup archivos de sistema + auditoría
-COMPLETADO:
-- Creados .cursorrules, SESSION_LOG.md, BACKLOG.md en raíz del proyecto
-- Eliminado console.log de producción (AppContext.tsx:333)
-- Auditoría completa: 0 errores TS, 0 dangerouslySetInnerHTML, 0 .env commiteados
-
-ARCHIVOS MODIFICADOS:
-- .cursorrules (nuevo)
-- SESSION_LOG.md (nuevo)
-- BACKLOG.md (nuevo)
-- src/context/AppContext.tsx (console.log eliminado)
-
-AUDITORÍA:
-🟢 TSC: 0 errores
-🟢 dangerouslySetInnerHTML: 0 ocurrencias
-🟢 .env en git: solo .env.example (correcto)
-🟡 console.log: 1 encontrado y eliminado (AppContext.tsx:333)
-🟡 `any` sin tipado: 20 ocurrencias en 11 archivos (exportData.ts x5, Settings.tsx x2, useVoiceEngine.ts x2, DomexAI.tsx x3, otros x8)
-
-PRÓXIMOS PASOS:
-1. Recibir CLAUDE_CODE_MASTER.md (Google Doc privado — no accesible aún)
-2. Tipar los 20 `any` críticos (prioridad: useVoiceEngine.ts, voiceProcessor.ts, DomexAI.tsx)
-3. Implementar P1 BACKLOG: localStorage persistence para AppContext + Push notification D1
+### 2026-06-11 — Redesign completo 11/11 pasos
+Pasos 1-11 implementados en una sesión. 0 errores TSC. Deploy en domex-temp.vercel.app.
+Tag v1-estable-pre-redesign intacto en main como rollback.

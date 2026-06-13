@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Map, Loader2, ChevronRight, CheckCircle, Circle, Flame } from 'lucide-react';
+import { Map, Loader2, ChevronRight, CheckCircle, Circle, Flame, Star, Trophy, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { generarRoadmap } from '../services/learningPathService';
 import type { LearningPath } from '../types';
@@ -12,6 +12,123 @@ const DIFICULTAD_COLOR: Record<LearningPath['dificultad'], string> = {
   intermedio: '#F59E0B',
   avanzado: '#EF4444',
 };
+const DIFICULTAD_LABEL: Record<LearningPath['dificultad'], string> = {
+  principiante: 'PRINCIPIANTE',
+  intermedio: 'INTERMEDIO',
+  avanzado: 'AVANZADO',
+};
+
+const QUIZ_PREGUNTAS = [
+  '¿Repasaste el material de esta semana?',
+  '¿Podés explicar el concepto principal con tus propias palabras?',
+  '¿Aplicaste o pensaste cómo aplicar algo de lo aprendido?',
+];
+
+function SemanasCirculos({ total, completadas, color }: { total: number; completadas: number; color: string }) {
+  return (
+    <div className="flex gap-1.5 flex-wrap">
+      {Array.from({ length: total }, (_, i) => {
+        const done = i < completadas;
+        const current = i === completadas;
+        return (
+          <div
+            key={i}
+            title={`Semana ${i + 1}`}
+            style={{
+              width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+              background: done ? color : current ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
+              border: current ? `1.5px solid ${color}` : 'none',
+              boxShadow: done ? `0 0 6px ${color}60` : 'none',
+              transition: 'all 0.3s',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function QuizModal({
+  onConfirm,
+  onCancel,
+  color,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  color: string;
+}) {
+  const [respuestas, setRespuestas] = useState<boolean[]>(QUIZ_PREGUNTAS.map(() => false));
+
+  const toggleRespuesta = (i: number) => {
+    setRespuestas(prev => prev.map((v, idx) => idx === i ? !v : v));
+  };
+
+  const todasSi = respuestas.every(Boolean);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    >
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onCancel} />
+      <motion.div
+        className="relative w-full max-w-md rounded-2xl p-5 space-y-4"
+        style={{ background: '#0D0D1A', border: `1px solid ${color}30` }}
+        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Star size={14} style={{ color }} />
+            <span className="sys-label" style={{ color, opacity: 1 }}>CHECKPOINT SEMANAL</span>
+          </div>
+          <button onClick={onCancel}><X size={14} className="text-white/30" /></button>
+        </div>
+
+        <p className="text-[13px] font-bold" style={{ color: 'var(--text-secondary)' }}>
+          Antes de avanzar, hacé un check rápido:
+        </p>
+
+        <div className="space-y-3">
+          {QUIZ_PREGUNTAS.map((pregunta, i) => (
+            <button
+              key={i}
+              onClick={() => toggleRespuesta(i)}
+              className="w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all"
+              style={{
+                background: respuestas[i] ? `${color}12` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${respuestas[i] ? `${color}40` : 'rgba(255,255,255,0.07)'}`,
+              }}
+            >
+              <div className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 transition-all"
+                style={{ background: respuestas[i] ? color : 'rgba(255,255,255,0.08)' }}>
+                {respuestas[i] && <CheckCircle size={12} color="#fff" />}
+              </div>
+              <span className="text-[13px] font-medium leading-snug" style={{ color: respuestas[i] ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                {pregunta}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {!todasSi && (
+          <p className="text-[10px] text-center" style={{ color: 'var(--text-tertiary)' }}>
+            Marcá las 3 para confirmar el avance
+          </p>
+        )}
+
+        <button
+          onClick={onConfirm}
+          disabled={!todasSi}
+          className="w-full py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-30"
+          style={{ background: todasSi ? color : 'rgba(255,255,255,0.06)', color: todasSi ? '#fff' : 'var(--text-tertiary)' }}
+        >
+          <Trophy size={13} /> CONFIRMAR SEMANA COMPLETADA
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 export default function LearningPaths() {
   const { learningPaths, agregarPath, avanzarSemanaPath } = useApp();
@@ -22,6 +139,7 @@ export default function LearningPaths() {
   const [duracion, setDuracion] = useState(4);
   const [dificultad, setDificultad] = useState<LearningPath['dificultad']>('principiante');
   const [generando, setGenerando] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
 
   const selectedPath = learningPaths.find(p => p.id === selectedId);
 
@@ -47,24 +165,32 @@ export default function LearningPaths() {
     setSelectedId(path.id);
   };
 
+  const handleAvanzar = () => {
+    if (!selectedPath) return;
+    avanzarSemanaPath(selectedPath.id);
+    setShowQuiz(false);
+  };
+
   if (selectedPath) {
     const pct = Math.round((selectedPath.semanasCompletadas / selectedPath.duracion) * 100);
     const color = DIFICULTAD_COLOR[selectedPath.dificultad];
     const hoy = new Date().toISOString().split('T')[0];
     const yaAvanzóHoy = selectedPath.ultimaSemana === hoy;
+    const completo = selectedPath.semanasCompletadas >= selectedPath.duracion;
 
     return (
       <div className="px-4 pt-4 pb-24 space-y-4">
-        <button onClick={() => setSelectedId(null)} className="flex items-center gap-1 sys-label" style={{ color: 'var(--color-accent)' }}>
-          ← TODOS LOS PATHS
+        <button onClick={() => setSelectedId(null)} className="flex items-center gap-1.5 sys-label" style={{ color: 'var(--honey-bright)' }}>
+          ← TODAS LAS RUTAS
         </button>
 
-        <div className="bm-card p-4 space-y-3" style={{ borderColor: `${color}30` }}>
+        {/* Header card */}
+        <div className="bm-card p-4 space-y-4" style={{ borderColor: `${color}30` }}>
           <div className="flex items-start justify-between gap-2">
-            <div>
-              <span className="sys-label block mb-1" style={{ color }}>{selectedPath.dificultad.toUpperCase()} · {selectedPath.duracion} SEMANAS</span>
+            <div className="flex-1 min-w-0">
+              <span className="sys-label block mb-1" style={{ color }}>{DIFICULTAD_LABEL[selectedPath.dificultad]} · {selectedPath.duracion} SEMANAS</span>
               <h2 className="text-xl font-black uppercase">{selectedPath.titulo}</h2>
-              <p className="text-[11px] text-white/40 mt-1">{selectedPath.goal}</p>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{selectedPath.goal}</p>
             </div>
             {selectedPath.racha > 0 && (
               <div className="flex items-center gap-1 shrink-0">
@@ -74,42 +200,70 @@ export default function LearningPaths() {
             )}
           </div>
 
-          {/* Progress bar */}
-          <div>
-            <div className="flex justify-between mb-1">
-              <span className="sys-label">PROGRESO</span>
-              <span className="sys-label">{selectedPath.semanasCompletadas}/{selectedPath.duracion} semanas</span>
+          {/* Weekly circles — Duolingo style */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="sys-label">SEMANAS</span>
+              <span className="sys-label" style={{ color }}>{selectedPath.semanasCompletadas}/{selectedPath.duracion}</span>
             </div>
-            <div className="w-full h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-              <motion.div className="h-full rounded-full" style={{ background: color }}
-                initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
-            </div>
-            <span className="sys-label mt-0.5 block">{pct}% COMPLETADO</span>
+            <SemanasCirculos total={selectedPath.duracion} completadas={selectedPath.semanasCompletadas} color={color} />
           </div>
 
-          {selectedPath.semanasCompletadas < selectedPath.duracion && (
+          {/* Progress bar */}
+          <div>
+            <div className="flex justify-between mb-1.5">
+              <span className="sys-label">PROGRESO</span>
+              <span className="sys-label" style={{ color }}>{pct}%</span>
+            </div>
+            <div className="w-full h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <motion.div className="h-full rounded-full" style={{ background: color }}
+                initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.7, ease: 'easeOut' }} />
+            </div>
+          </div>
+
+          {completo ? (
+            <div className="flex items-center justify-center gap-2 py-2 rounded-xl"
+              style={{ background: `${color}12`, border: `1px solid ${color}30` }}>
+              <Trophy size={16} style={{ color }} />
+              <span className="font-black text-[11px] uppercase tracking-widest" style={{ color }}>RUTA COMPLETADA</span>
+            </div>
+          ) : (
             <button
-              onClick={() => avanzarSemanaPath(selectedPath.id)}
+              onClick={() => !yaAvanzóHoy && setShowQuiz(true)}
               disabled={yaAvanzóHoy}
-              className="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
-              style={{ background: yaAvanzóHoy ? 'rgba(255,255,255,0.06)' : `${color}20`, border: `1px solid ${yaAvanzóHoy ? 'rgba(255,255,255,0.08)' : `${color}40`}`, color: yaAvanzóHoy ? 'rgba(255,255,255,0.3)' : color }}
+              className="w-full py-3 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+              style={{
+                background: yaAvanzóHoy ? 'rgba(255,255,255,0.06)' : `${color}20`,
+                border: `1px solid ${yaAvanzóHoy ? 'rgba(255,255,255,0.08)' : `${color}40`}`,
+                color: yaAvanzóHoy ? 'rgba(255,255,255,0.3)' : color,
+              }}
             >
-              {yaAvanzóHoy ? (
-                <><CheckCircle size={14} />SEMANA COMPLETADA HOY</>
-              ) : (
-                <><Circle size={14} />MARCAR SEMANA COMPLETADA</>
-              )}
+              {yaAvanzóHoy
+                ? <><CheckCircle size={14} /> SEMANA COMPLETADA HOY</>
+                : <><Star size={14} /> CHECKPOINT DE LA SEMANA {selectedPath.semanasCompletadas + 1}</>
+              }
             </button>
           )}
         </div>
 
         {/* Roadmap */}
         <div className="bm-card p-4">
-          <span className="sys-label block mb-3">ROADMAP COMPLETO</span>
+          <span className="sys-label block mb-3">HOJA DE RUTA COMPLETA</span>
           <div className="markdown-content text-[13px] leading-relaxed space-y-2" style={{ color: 'rgba(255,255,255,0.75)' }}>
             <ReactMarkdown>{selectedPath.roadmap}</ReactMarkdown>
           </div>
         </div>
+
+        {/* Quiz modal */}
+        <AnimatePresence>
+          {showQuiz && (
+            <QuizModal
+              color={color}
+              onConfirm={handleAvanzar}
+              onCancel={() => setShowQuiz(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -121,22 +275,22 @@ export default function LearningPaths() {
           <div className="live-dot" />
           <span className="sys-label">APRENDIZAJE AVANZADO</span>
         </div>
-        <h1 className="text-3xl font-black tracking-tighter uppercase">Learning<br />Paths</h1>
+        <h1 className="text-3xl font-black tracking-tighter uppercase">Rutas de<br />Aprendizaje</h1>
       </div>
 
       <button
         onClick={() => setShowForm(true)}
-        className="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest"
-        style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#6366F1' }}
+        className="w-full py-3 rounded-xl font-black text-[11px] uppercase tracking-widest"
+        style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)', color: '#6366F1' }}
       >
-        + CREAR NUEVO PATH
+        + CREAR NUEVA RUTA
       </button>
 
       {learningPaths.length === 0 && (
         <div className="bm-card p-6 text-center space-y-2">
           <Map size={28} style={{ color: '#6366F1', margin: '0 auto' }} />
-          <p className="font-black text-base">Sin paths creados</p>
-          <p className="text-[11px] text-white/30">Definí un objetivo de aprendizaje y Groq te arma el roadmap.</p>
+          <p className="font-black text-base">Sin rutas creadas</p>
+          <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Definí un objetivo y Groq te arma la hoja de ruta semana a semana.</p>
         </div>
       )}
 
@@ -144,6 +298,7 @@ export default function LearningPaths() {
         {learningPaths.map((path, i) => {
           const color = DIFICULTAD_COLOR[path.dificultad];
           const pct = Math.round((path.semanasCompletadas / path.duracion) * 100);
+          const completo = path.semanasCompletadas >= path.duracion;
           return (
             <motion.button
               key={path.id}
@@ -152,23 +307,32 @@ export default function LearningPaths() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full bm-card p-4 text-left relative overflow-hidden"
+              className="w-full bm-card p-4 text-left relative overflow-hidden space-y-3"
             >
               <div className="absolute left-0 top-3 bottom-3 w-[2px] rounded-r" style={{ background: color }} />
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <span className="sys-label block mb-0.5" style={{ color }}>{path.dificultad.toUpperCase()} · {path.duracion}W</span>
-                  <p className="font-black text-base">{path.titulo}</p>
-                  <p className="text-[10px] text-white/30 mt-0.5 truncate">{path.goal}</p>
+                  <span className="sys-label block mb-0.5" style={{ color }}>{DIFICULTAD_LABEL[path.dificultad]} · {path.duracion} SEM</span>
+                  <p className="font-black text-[15px]">{path.titulo}</p>
+                  <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>{path.goal}</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="font-black sys-value" style={{ color }}>{pct}%</span>
-                  <ChevronRight size={14} className="text-white/20 mt-1 ml-auto" />
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                  {completo
+                    ? <Trophy size={16} style={{ color }} />
+                    : <span className="font-black sys-value text-sm" style={{ color }}>{pct}%</span>
+                  }
+                  {path.racha > 0 && (
+                    <div className="flex items-center gap-0.5">
+                      <Flame size={10} style={{ color: '#F59E0B' }} />
+                      <span className="font-black text-[9px]" style={{ color: '#F59E0B' }}>{path.racha}</span>
+                    </div>
+                  )}
+                  <ChevronRight size={14} className="text-white/20" />
                 </div>
               </div>
-              <div className="mt-2 w-full h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
-              </div>
+
+              {/* Mini weekly circles */}
+              <SemanasCirculos total={path.duracion} completadas={path.semanasCompletadas} color={color} />
             </motion.button>
           );
         })}
@@ -188,7 +352,7 @@ export default function LearningPaths() {
               transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             >
               <div className="w-8 h-1 bg-white/20 rounded-full mx-auto" />
-              <span className="sys-label block" style={{ color: '#6366F1' }}>NUEVO LEARNING PATH</span>
+              <span className="sys-label block" style={{ color: '#6366F1' }}>NUEVA RUTA DE APRENDIZAJE</span>
 
               <div>
                 <span className="sys-label block mb-1">¿QUÉ QUERÉS APRENDER?</span>
@@ -234,7 +398,7 @@ export default function LearningPaths() {
                           border: `1px solid ${dificultad === d ? DIFICULTAD_COLOR[d] : 'rgba(255,255,255,0.06)'}`,
                           color: dificultad === d ? DIFICULTAD_COLOR[d] : 'rgba(255,255,255,0.3)',
                         }}>
-                        {d.toUpperCase()}
+                        {DIFICULTAD_LABEL[d]}
                       </button>
                     ))}
                   </div>
@@ -247,7 +411,10 @@ export default function LearningPaths() {
                 className="w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-30"
                 style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)', color: 'white' }}
               >
-                {generando ? <><Loader2 size={16} className="animate-spin" />GENERANDO ROADMAP...</> : <><Map size={16} />CREAR PATH</>}
+                {generando
+                  ? <><Loader2 size={16} className="animate-spin" />GENERANDO HOJA DE RUTA...</>
+                  : <><Map size={16} />CREAR RUTA</>
+                }
               </button>
             </motion.div>
           </>

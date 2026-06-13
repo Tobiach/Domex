@@ -1,3 +1,5 @@
+import { dispatchAudioStart, dispatchAudioEnd, dispatchAudioPause, dispatchAudioResume } from './audioPlayerStore';
+
 // iOS requiere que speechSynthesis sea "desbloqueada" desde un gesto del usuario.
 // Llamamos esto en el primer tap del botón de micrófono.
 let audioUnlocked = false;
@@ -74,6 +76,29 @@ export async function hablarTexto(texto: string, rate = 1.1): Promise<void> {
 
 export function detenerVoz(): void {
   window.speechSynthesis.cancel();
+  dispatchAudioEnd();
+}
+
+export function pausarVoz(): void {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.pause();
+    dispatchAudioPause();
+  }
+}
+
+export function reanudarVoz(): void {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.resume();
+    dispatchAudioResume();
+  }
+}
+
+export function estaHablando(): boolean {
+  return 'speechSynthesis' in window && window.speechSynthesis.speaking && !window.speechSynthesis.paused;
+}
+
+export function estaPausado(): boolean {
+  return 'speechSynthesis' in window && window.speechSynthesis.paused;
 }
 
 export function hablarConCallback(
@@ -97,6 +122,7 @@ export function hablarConCallback(
     let keepAlive: ReturnType<typeof setInterval> | null = null;
     utterance.onstart = () => {
       onStart();
+      dispatchAudioStart(texto.replace(/[#*`[\]]/g, '').slice(0, 60));
       keepAlive = setInterval(() => {
         if (!window.speechSynthesis.speaking) { clearInterval(keepAlive!); return; }
         window.speechSynthesis.pause();
@@ -104,8 +130,8 @@ export function hablarConCallback(
       }, 10000);
     };
     const cleanup = () => { if (keepAlive) clearInterval(keepAlive); };
-    utterance.onend = () => { cleanup(); onEnd(); };
-    utterance.onerror = () => { cleanup(); onEnd(); };
+    utterance.onend = () => { cleanup(); onEnd(); dispatchAudioEnd(); };
+    utterance.onerror = () => { cleanup(); onEnd(); dispatchAudioEnd(); };
 
     setTimeout(() => window.speechSynthesis.speak(utterance), 50);
   });

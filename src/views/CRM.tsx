@@ -145,6 +145,17 @@ export default function CRM() {
         })}
       </div>
 
+      {/* Empty state global */}
+      {contactos.length === 0 && (
+        <div className="bm-card p-8 text-center space-y-2">
+          <p className="text-3xl">👤</p>
+          <p className="font-bold text-sm" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Nadie en el pipeline todavía</p>
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            Usá la voz: <span style={{ color: 'var(--honey-bright)' }}>"Contacto: Martín García de Empresa X, prospecto $500"</span>
+          </p>
+        </div>
+      )}
+
       {/* Pipeline */}
       <div className="space-y-8">
         {etapas.map((etapa) => {

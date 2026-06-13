@@ -1,10 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flame, Plus, Check, Trash2, X, Trophy, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { cn } from '../lib/utils';
 
 const ICONOS = ['💪', '📚', '🧘', '💧', '🏃', '📞', '✍️', '🎯', '🌅', '🧠', '🥗', '😴'];
+
+function SemanaCirculos({ racha, completadoHoy }: { racha: number; completadoHoy: boolean }) {
+  return (
+    <div className="flex gap-1.5 mt-1.5">
+      {Array.from({ length: 7 }, (_, i) => {
+        const fromRight = 6 - i;
+        const filled = fromRight === 0 ? completadoHoy : fromRight < racha;
+        return (
+          <div key={i} style={{
+            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+            background: filled ? 'var(--honey-core)' : 'rgba(255,255,255,0.08)',
+          }} />
+        );
+      })}
+    </div>
+  );
+}
 
 function RingProgress({ value, total }: { value: number; total: number }) {
   const pct = total > 0 ? value / total : 0;
@@ -42,6 +59,13 @@ export default function Habitos() {
   const [nuevoTitulo, setNuevoTitulo] = useState('');
   const [nuevoIcono, setNuevoIcono] = useState('💪');
   const [celebrando, setCelebrando] = useState<string | null>(null);
+  const [showRecordBanner, setShowRecordBanner] = useState(false);
+
+  useEffect(() => {
+    if (!showRecordBanner) return;
+    const t = setTimeout(() => setShowRecordBanner(false), 3000);
+    return () => clearTimeout(t);
+  }, [showRecordBanner]);
 
   const completadosHoy = habitos.filter(h => h.completadoHoy).length;
   const rachaMaxima = habitos.reduce((max, h) => Math.max(max, h.racha), 0);
@@ -50,8 +74,11 @@ export default function Habitos() {
     : 0;
 
   const handleCompletar = (id: string) => {
+    const habito = habitos.find(h => h.id === id);
+    const isNewRecord = habito && !habito.completadoHoy && (habito.racha + 1 > rachaMaxima);
     completarHabito(id);
     setCelebrando(id);
+    if (isNewRecord) setShowRecordBanner(true);
     setTimeout(() => setCelebrando(null), 800);
   };
 
@@ -68,6 +95,28 @@ export default function Habitos() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+
+      {/* Record banner */}
+      <AnimatePresence>
+        {showRecordBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -48 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -48 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-safe"
+            style={{ paddingTop: 'env(safe-area-inset-top, 16px)' }}
+          >
+            <div className="flex items-center gap-2 px-6 py-3 rounded-b-2xl"
+              style={{ background: 'var(--honey-core)', boxShadow: '0 4px 24px rgba(201,148,26,0.45)' }}>
+              <span style={{ fontSize: 18 }}>🔥</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-on-honey)', fontFamily: 'var(--font-display)', letterSpacing: '0.02em' }}>
+                ¡Nueva racha máxima!
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <header className="flex justify-between items-start">
@@ -141,7 +190,7 @@ export default function Habitos() {
 
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-[15px] tracking-tight leading-tight">{habito.titulo}</p>
-                      <div className="flex items-center gap-1.5 mt-1">
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <div className={cn(
                           "flex items-center gap-1 px-2 py-0.5 rounded-full",
                           habito.racha >= 21 ? "bg-orange-500/20" :
@@ -156,10 +205,22 @@ export default function Habitos() {
                             habito.racha >= 21 ? "text-orange-400" :
                             habito.racha >= 7 ? "text-amber-400" : "text-white/30"
                           )}>
-                            {habito.racha} días
+                            {habito.racha}d
                           </span>
                         </div>
+                        {habito.horario && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'rgba(201,148,26,0.1)', color: 'var(--honey-core)', border: '1px solid rgba(201,148,26,0.2)' }}>
+                            ⏰ {habito.horario}
+                          </span>
+                        )}
+                        {habito.frecuencia && (
+                          <span className="text-[9px] font-bold" style={{ color: 'var(--text-tertiary)' }}>
+                            {habito.frecuencia}
+                          </span>
+                        )}
                       </div>
+                      <SemanaCirculos racha={habito.racha} completadoHoy={habito.completadoHoy} />
                     </div>
 
                     <button
@@ -231,8 +292,10 @@ export default function Habitos() {
             🌱
           </div>
           <div className="text-center">
-            <p className="text-sm font-black uppercase tracking-widest text-white/30">Sin hábitos aún</p>
-            <p className="text-[10px] text-white/20 mt-1">Los grandes resultados empiezan con pequeños hábitos</p>
+            <p className="text-sm font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Sin hábitos todavía</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+              Decí <span style={{ color: 'var(--honey-bright)' }}>"Hábito: tomar agua al levantarme"</span>
+            </p>
           </div>
         </div>
       )}

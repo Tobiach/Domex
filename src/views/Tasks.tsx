@@ -214,6 +214,20 @@ export default function Tasks() {
         </div>
       </div>
 
+      {/* Empty state global */}
+      {tareas.length === 0 && (
+        <div className="bm-card p-8 text-center space-y-2">
+          <p className="text-3xl">🎯</p>
+          <p className="font-bold text-base" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+            Todo despejado
+          </p>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            Todavía no guardaste tareas. Tocá el micrófono y decí<br />
+            <span style={{ color: 'var(--honey-bright)' }}>"Tarea: llamar a Juan mañana"</span>
+          </p>
+        </div>
+      )}
+
       {/* Sections */}
       <div className="space-y-6">
         {secciones.map((sec) => {

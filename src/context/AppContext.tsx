@@ -99,7 +99,7 @@ interface AppContextType {
   marcarNoticiaLeida: (id: string) => void;
   resetearTodosLosDatos: () => void;
   completarHabito: (id: string) => void;
-  agregarHabito: (titulo: string, icono: string) => void;
+  agregarHabito: (titulo: string, icono: string, horario?: string | null, frecuencia?: string | null) => void;
   eliminarHabito: (id: string) => void;
   hidratarDesdeDB: (data: Partial<{ tareas: Tarea[]; ideas: Idea[]; transacciones: Transaccion[]; habitos: Habito[] }>) => void;
   // Módulo: Aprendizaje
@@ -385,7 +385,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ));
   };
 
-  const agregarHabito = (titulo: string, icono: string) => {
+  const agregarHabito = (titulo: string, icono: string, horario?: string | null, frecuencia?: string | null) => {
     const nuevo: Habito = {
       id: `habito_${Date.now()}`,
       titulo,
@@ -394,6 +394,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completadoHoy: false,
       ultimaVez: null,
       creadoEn: new Date().toISOString(),
+      horario: horario ?? null,
+      frecuencia: frecuencia ?? null,
     };
     setHabitos(prev => [...prev, nuevo]);
   };

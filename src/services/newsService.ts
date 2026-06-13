@@ -1,7 +1,9 @@
 ﻿import { NewsItem } from '../types';
+import { supabase } from './supabaseClient';
 
 const CACHE_KEY = 'domex_news_cache';
 const CACHE_TTL = 15 * 60 * 1000;
+const SUPABASE_CACHE_TTL_HOURS = 24;
 
 const MOCK_NEWS: NewsItem[] = [
   {
@@ -158,15 +160,41 @@ export async function fetchIntelNews(): Promise<NewsItem[]> {
     const unique = Array.from(new Map(combined.map(item => [item.titulo, item])).values())
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      data: unique,
-      timestamp: Date.now()
-    }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ data: unique, timestamp: Date.now() }));
+
+    // T10: persistir en Supabase como backup 24h
+    if (supabase) {
+      void (async () => {
+        try {
+          await supabase.from('news_cache').insert({ category: 'general', articles: unique, cached_at: new Date().toISOString() });
+        } catch { /* silent */ }
+      })();
+    }
 
     return unique;
 
   } catch (error) {
     console.error('Error fetching news:', error);
+
+    // T10: fallback a caché Supabase (máximo 24h)
+    if (supabase) {
+      try {
+        const { data: sbData } = await supabase
+          .from('news_cache')
+          .select('articles, cached_at')
+          .eq('category', 'general')
+          .order('cached_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (sbData) {
+          const ageHours = (Date.now() - new Date(sbData.cached_at).getTime()) / 1000 / 3600;
+          if (ageHours < SUPABASE_CACHE_TTL_HOURS) {
+            return sbData.articles as NewsItem[];
+          }
+        }
+      } catch { /* silent */ }
+    }
+
     return MOCK_NEWS;
   }
 }

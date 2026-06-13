@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { procesarVozInteligente, UserContext, VoiceIntelligenceResult } from '../services/voiceProcessor';
+
+// Computed once at module load — true if the browser supports Web Speech API
+export const SPEECH_SUPPORT =
+  typeof window !== 'undefined' &&
+  ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
 export type VoiceEstado = 'idle' | 'listening' | 'processing' | 'success' | 'error';
 
@@ -37,6 +42,8 @@ export interface VoiceEngineActions {
   cancelar: () => void;
   reintentar: () => void;
   dismissarExito: () => void;
+  processText: (text: string) => void;
+  hasSpeechSupport: boolean;
 }
 
 export function useVoiceEngine(
@@ -46,6 +53,7 @@ export function useVoiceEngine(
   const recognitionRef = useRef<any>(null);
   const finalTranscriptRef = useRef('');
   const getContextRef = useRef(getContext);
+  const autoRetriedRef = useRef(false);
 
   // Keep context getter current without re-creating the hook
   getContextRef.current = getContext;
@@ -69,11 +77,9 @@ export function useVoiceEngine(
     try {
       const result = await procesarVozInteligente(transcript, getContextRef.current());
       patch({ estado: 'success', resultado: result });
-    } catch {
-      patch({
-        estado: 'error',
-        errorMsg: 'Error de conexión. Verificá tu internet e intentá de nuevo.',
-      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error de conexión. Verificá tu internet e intentá de nuevo.';
+      patch({ estado: 'error', errorMsg: msg });
     }
   }, []);
 
@@ -111,9 +117,15 @@ export function useVoiceEngine(
 
     recognition.onerror = (e: any) => {
       recognitionRef.current = null;
-      // 'aborted' desde iOS puede ser una interrupción inesperada del sistema
-      // (no nuestra llamada a stop(), porque esa nullea el handler antes).
-      // Si estábamos escuchando activamente, mostramos error con opción de reintentar.
+      // Auto-retry once for transient errors (network / aborted by OS interruption).
+      // Only retry if we haven't already done so this session to avoid infinite loops.
+      const retryableErrors = ['network', 'aborted'];
+      if (retryableErrors.includes(e.error) && !autoRetriedRef.current) {
+        autoRetriedRef.current = true;
+        setTimeout(() => buildAndStartRecognition(), 600);
+        return;
+      }
+      autoRetriedRef.current = false;
       if (e.error === 'aborted') {
         setState(prev =>
           prev.estado === 'listening'
@@ -153,6 +165,7 @@ export function useVoiceEngine(
 
   const iniciar = useCallback(() => {
     destroyRecognition();
+    autoRetriedRef.current = false;
     setState({ ...INITIAL, estado: 'listening' });
     buildAndStartRecognition();
   }, [destroyRecognition, buildAndStartRecognition]);
@@ -166,12 +179,18 @@ export function useVoiceEngine(
     setState(INITIAL);
   }, []);
 
-  // Retry reuses the same start flow
   const reintentar = useCallback(() => {
     destroyRecognition();
+    autoRetriedRef.current = false;
     setState({ ...INITIAL, estado: 'listening' });
     buildAndStartRecognition();
   }, [destroyRecognition, buildAndStartRecognition]);
 
-  return { ...state, iniciar, cancelar, reintentar, dismissarExito };
+  // Bypasses speech recognition entirely — processes typed text through the same AI pipeline
+  const processText = useCallback((text: string) => {
+    destroyRecognition();
+    procesarComando(text);
+  }, [destroyRecognition, procesarComando]);
+
+  return { ...state, iniciar, cancelar, reintentar, dismissarExito, processText, hasSpeechSupport: SPEECH_SUPPORT };
 }

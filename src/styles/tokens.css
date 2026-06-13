@@ -1,0 +1,91 @@
+/* ═══════════════════════════════════════════════════════
+   AICOLMENA — DESIGN TOKENS v2
+   Paleta "Miel Fundida" — regla 80/15/5
+   TODO el código consume de acá. Prohibido hardcodear colores.
+═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── 80% EL ESPACIO ── */
+  --bg-primary:      #0A0A0F;
+  --bg-surface:      #12121A;
+  --bg-surface-warm: #0F0D08;
+  --bg-elevated:     #1A1A24;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-default:rgba(255,255,255,0.10);
+
+  /* ── 15% EL MOTOR (violeta — estructura, navegación) ── */
+  --violet-core:   #5B21B6;
+  --violet-bright: #7C3AED;
+  --violet-soft:   #A78BFA;
+  --violet-ghost:  rgba(91,33,182,0.12);
+
+  /* ── 5% LA SEÑAL (miel fundida — solo lo que requiere atención) ── */
+  --honey-core:    #C9941A;
+  --honey-bright:  #F0B429;
+  --honey-soft:    #F5D77E;
+  --honey-glow:    rgba(201,148,26,0.15);
+  --honey-border:  rgba(201,148,26,0.3);
+  --honey-bg-warm: #0F0D08;
+
+  /* ── COMPLEMENTARIOS ── */
+  --amber-deep:    #92670F;
+  --cream:         #FBF3E4;
+  --success:       #34D399;
+  --danger:        #F87171;
+  --info:          #60A5FA;
+  --teal:          #5EEAD4;
+
+  /* ── TEXTO ── */
+  --text-primary:   #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --text-tertiary:  #6B7280;
+  --text-muted:     #374151;
+  --text-on-honey:  #1A1206;
+
+  /* ── TIPOGRAFÍA ── */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body:    'Inter', sans-serif;
+
+  /* ── ESCALA TIPOGRÁFICA ── */
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  28px;
+  --text-3xl:  36px;
+  --lh-body:   1.5;
+  --lh-title:  1.2;
+  --ls-title:  -0.02em;
+
+  /* ── ESPACIADO (grid 4px) ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── RADIOS ── */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-full: 9999px;
+
+  /* ── SOMBRAS / GLOWS ── */
+  --glow-violet: 0 0 24px rgba(91,33,182,0.25);
+  --glow-honey:  0 0 32px rgba(201,148,26,0.30);
+
+  /* ── ANIMACIONES ── */
+  --duration-fast:   150ms;
+  --duration-base:   200ms;
+  --ease-out:        cubic-bezier(0.0, 0.0, 0.2, 1);
+
+  /* ── BACKWARD COMPAT (aliases para código legado) ── */
+  --accent-main:      var(--honey-core);
+  --accent-secondary: var(--violet-soft);
+  --color-accent:     var(--honey-core);
+  --color-primary:    var(--violet-core);
+}
