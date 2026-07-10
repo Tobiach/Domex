@@ -18,6 +18,6 @@ export async function mostrarNotificacion(titulo: string, cuerpo: string) {
   const reg = await navigator.serviceWorker.ready;
   reg.showNotification(titulo, {
     body: cuerpo,
-    icon: '/icon-192.png',
+    icon: '/icon.svg',
   });
 }

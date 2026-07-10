@@ -3,11 +3,11 @@ self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
 
 self.addEventListener('push', function (event) {
   const data = event.data?.json() ?? {};
-  const title = data.title || 'Domex';
+  const title = data.title || 'AIcolmena';
   const options = {
     body: data.body || '',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     data: { url: data.url || '/' },
   };
   event.waitUntil(self.registration.showNotification(title, options));
