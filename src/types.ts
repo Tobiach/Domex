@@ -168,6 +168,26 @@ export interface Agenda {
   tipo: 'reunion' | 'recordatorio' | 'evento';
 }
 
+// ─── Módulo: Personas importantes (motor emocional/relacional) ────────────
+// Local-first: NO se sincroniza a Supabase (dato sensible, opt-in aparte más adelante).
+
+export type TipoVinculo = 'pareja' | 'familia' | 'amigo' | 'amigo_cercano' | 'colega' | 'otro';
+export type TemperaturaVinculo = 'positiva' | 'neutra' | 'tensa';
+
+export interface PersonaImportante {
+  id: string;
+  nombre: string;
+  apodo?: string;
+  tipoVinculo: TipoVinculo;
+  conoceDesde?: string;
+  temasRecurrentes: string[];
+  ultimaInteraccion: string | null;
+  // Inferida por el motor de correlación — nunca se le pide directo al usuario.
+  temperaturaReciente: TemperaturaVinculo | null;
+  notas: string;
+  creadoEn: string;
+}
+
 export interface VoiceProcessorResult {
   tipo: 'tarea' | 'reunion' | 'gasto' | 'idea' | 'nota';
   titulo: string;

@@ -32,6 +32,8 @@ import {
   BlindSpot,
   AccountabilityGoal,
   LegacyProfile,
+  PersonaImportante,
+  TemperaturaVinculo,
 } from '../types';
 
 type EntradaIdea = Omit<Idea, 'id' | 'creadoEn'>;
@@ -39,6 +41,8 @@ type EntradaTarea = Omit<Tarea, 'id' | 'completada'>;
 type EntradaTransaccion = Omit<Transaccion, 'id' | 'fecha'>;
 type EntradaContacto = Omit<ContactoCRM, 'id'>;
 type EntradaAgenda = Omit<Agenda, 'id'>;
+type EntradaPersona = Pick<PersonaImportante, 'nombre' | 'tipoVinculo'> &
+  Partial<Pick<PersonaImportante, 'apodo' | 'conoceDesde' | 'notas'>>;
 
 const STORAGE_KEYS = {
   tareas: 'domex_tareas',
@@ -66,6 +70,7 @@ const STORAGE_KEYS = {
   accountability: 'domex_accountability',
   legacy: 'domex_legacy',
   contactos: 'domex_contactos',
+  personasImportantes: 'domex_personas_importantes',
 } as const;
 
 interface AppContextType {
@@ -150,6 +155,13 @@ interface AppContextType {
   actualizarProgreso: (id: string, progreso: number, completada?: boolean, leccion?: string) => void;
   legacy: LegacyProfile | null;
   setLegacy: (profile: LegacyProfile) => void;
+  // Módulo: Personas importantes
+  personasImportantes: PersonaImportante[];
+  agregarPersona: (persona: EntradaPersona) => void;
+  actualizarPersona: (id: string, updates: Partial<Pick<PersonaImportante, 'nombre' | 'apodo' | 'tipoVinculo' | 'conoceDesde' | 'notas'>>) => void;
+  eliminarPersona: (id: string) => void;
+  agregarTemaRecurrente: (id: string, tema: string) => void;
+  registrarInteraccionPersona: (id: string, temperatura?: TemperaturaVinculo) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -291,6 +303,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
   const [legacy, setLegacyState] = useState<LegacyProfile | null>(
     () => loadFromStorage(STORAGE_KEYS.legacy, null)
+  );
+  const [personasImportantes, setPersonasImportantes] = useState<PersonaImportante[]>(
+    () => loadFromStorage(STORAGE_KEYS.personasImportantes, [])
   );
 
   const [noticiasLeidas, setNoticiasLeidas] = useState<string[]>(() => {
@@ -517,6 +532,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setLegacy = (profile: LegacyProfile) => setLegacyState(profile);
 
+  // ── Acciones: Personas importantes ──
+
+  const agregarPersona = (persona: EntradaPersona) => {
+    const nueva: PersonaImportante = {
+      ...persona,
+      id: `persona_${Date.now()}`,
+      temasRecurrentes: [],
+      ultimaInteraccion: null,
+      temperaturaReciente: null,
+      notas: persona.notas ?? '',
+      creadoEn: new Date().toISOString(),
+    };
+    setPersonasImportantes(prev => [...prev, nueva]);
+  };
+
+  const actualizarPersona = (id: string, updates: Partial<Pick<PersonaImportante, 'nombre' | 'apodo' | 'tipoVinculo' | 'conoceDesde' | 'notas'>>) => {
+    setPersonasImportantes(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
+  const eliminarPersona = (id: string) => {
+    setPersonasImportantes(prev => prev.filter(p => p.id !== id));
+  };
+
+  const agregarTemaRecurrente = (id: string, tema: string) => {
+    setPersonasImportantes(prev => prev.map(p =>
+      p.id === id && !p.temasRecurrentes.includes(tema)
+        ? { ...p, temasRecurrentes: [...p.temasRecurrentes, tema] }
+        : p
+    ));
+  };
+
+  const registrarInteraccionPersona = (id: string, temperatura?: TemperaturaVinculo) => {
+    setPersonasImportantes(prev => prev.map(p =>
+      p.id === id
+        ? { ...p, ultimaInteraccion: new Date().toISOString(), ...(temperatura ? { temperaturaReciente: temperatura } : {}) }
+        : p
+    ));
+  };
+
   const hidratarDesdeDB = (data: Partial<{ tareas: Tarea[]; ideas: Idea[]; transacciones: Transaccion[]; habitos: Habito[] }>) => {
     if (data.tareas?.length) setTareas(data.tareas);
     if (data.ideas?.length) setIdeas(data.ideas);
@@ -547,6 +601,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.blindSpots, JSON.stringify(blindSpots)); }, [blindSpots]);
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.accountability, JSON.stringify(accountabilityGoals)); }, [accountabilityGoals]);
   useEffect(() => { if (legacy) localStorage.setItem(STORAGE_KEYS.legacy, JSON.stringify(legacy)); }, [legacy]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.personasImportantes, JSON.stringify(personasImportantes)); }, [personasImportantes]);
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.mensajes, JSON.stringify(mensajes.slice(-50)));
   }, [mensajes]);
@@ -601,6 +656,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setContactos([]);
     setAgenda([]);
     setMensajes(MENSAJES_INICIALES);
+    setPersonasImportantes([]);
   };
 
   return (
@@ -631,6 +687,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       blindSpots, setBlindSpots, completarBlindSpot,
       accountabilityGoals, agregarAccountabilityGoal, actualizarProgreso,
       legacy, setLegacy,
+      personasImportantes, agregarPersona, actualizarPersona, eliminarPersona,
+      agregarTemaRecurrente, registrarInteraccionPersona,
     }}>
       {children}
     </AppContext.Provider>
