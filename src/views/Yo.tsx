@@ -1,10 +1,90 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, LogOut, Bell, Mic, Palette, Flame, CheckSquare, Lightbulb } from 'lucide-react';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { useStreaks } from '../hooks/useStreaks';
+import type { PersonaImportante } from '../types';
+
+// Punto 6 KICKOFF-PARALELO-CODIGO.md: lista editable de lo que el sistema
+// registró del motor emocional/relacional. Vive dentro de Yo.tsx a propósito
+// (el nombre "Memoria" ya lo usa la vista de memoria cognitiva/sueño/azúcar).
+function QueSabeColmena({ personas, actualizarPersona, eliminarPersona }: {
+  personas: PersonaImportante[];
+  actualizarPersona: (id: string, updates: Partial<Pick<PersonaImportante, 'nombre' | 'apodo' | 'tipoVinculo' | 'conoceDesde' | 'notas'>>) => void;
+  eliminarPersona: (id: string) => void;
+}) {
+  const [editId, setEditId] = useState<string | null>(null);
+
+  return (
+    <div className="bm-card p-4 space-y-3">
+      <p className="sys-label" style={{ color: 'var(--violet-soft)' }}>QUÉ SABE COLMENA DE MÍ</p>
+      {personas.length === 0 ? (
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
+          Todavía no registraste personas importantes. Van a aparecer acá a medida que las menciones.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {personas.map(p => (
+            <div key={p.id} className="rounded-xl p-3" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+              {editId === p.id ? (
+                <div className="space-y-2">
+                  <input
+                    value={p.nombre}
+                    onChange={e => actualizarPersona(p.id, { nombre: e.target.value })}
+                    placeholder="Nombre"
+                    className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                  />
+                  <textarea
+                    value={p.notas}
+                    onChange={e => actualizarPersona(p.id, { notas: e.target.value })}
+                    placeholder="Notas libres"
+                    rows={2}
+                    className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditId(null)}
+                      className="flex-1 py-2 rounded-lg text-xs font-bold"
+                      style={{ background: 'var(--honey-core)', color: 'var(--text-on-honey)' }}
+                    >
+                      Listo
+                    </button>
+                    <button
+                      onClick={() => { eliminarPersona(p.id); setEditId(null); }}
+                      className="flex-1 py-2 rounded-lg text-xs font-bold"
+                      style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.25)' }}
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setEditId(p.id)} className="w-full text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{p.apodo || p.nombre}</span>
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: 18 }}>›</span>
+                  </div>
+                  {p.temasRecurrentes.length > 0 && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                      Patrones: {p.temasRecurrentes.join(', ')}
+                    </p>
+                  )}
+                  {p.notas && (
+                    <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>{p.notas}</p>
+                  )}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ResumenSemanal({ tareas, habitos, transacciones, learningLessons }: {
   tareas: any[]; habitos: any[]; transacciones: any[]; learningLessons: any[];
@@ -82,7 +162,7 @@ function ResumenSemanal({ tareas, habitos, transacciones, learningLessons }: {
 export default function Yo() {
   const { profile } = useUserProfile();
   const { logout } = useAuth();
-  const { tareas, ideas, transacciones, habitos, learningLessons } = useApp();
+  const { tareas, ideas, transacciones, habitos, learningLessons, personasImportantes, actualizarPersona, eliminarPersona } = useApp();
   const streak = useStreaks();
   const navigate = useNavigate();
 
@@ -119,6 +199,9 @@ export default function Yo() {
 
       {/* Resumen semanal */}
       <ResumenSemanal tareas={tareas} habitos={habitos} transacciones={transacciones} learningLessons={learningLessons} />
+
+      {/* Qué sabe Colmena de mí */}
+      <QueSabeColmena personas={personasImportantes} actualizarPersona={actualizarPersona} eliminarPersona={eliminarPersona} />
 
       {/* Stats de uso */}
       <div className="grid grid-cols-3 gap-2">
