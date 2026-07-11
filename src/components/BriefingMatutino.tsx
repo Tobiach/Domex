@@ -7,6 +7,7 @@ import { hablarConCallback } from '../services/voiceService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getPatterns, generatePatterns } from '../services/patternService';
+import { obtenerCheckInRelacionalDelDia } from '../services/optimizacionService';
 
 const BRIEFING_KEY = 'domex_briefing_';
 
@@ -36,12 +37,14 @@ interface Props {
 type Estado = 'listo' | 'reproduciendo' | 'pausado' | 'terminado';
 
 export default function BriefingMatutino({ onClose }: Props) {
-  const { tareas, mercado, agenda } = useApp();
+  const { tareas, mercado, agenda, personasImportantes, energyEntries, hormoneEntries, memoryEntries } = useApp();
   const { profile } = useUserProfile();
   const [estado, setEstado] = useState<Estado>('listo');
   const [lineaActiva, setLineaActiva] = useState(-1);
   const stopRef = useRef<(() => void) | null>(null);
   const [patternInsight, setPatternInsight] = useState('');
+  const [checkInRelacional, setCheckInRelacional] = useState('');
+  const [recursoCrisis, setRecursoCrisis] = useState('');
 
   const nombre = profile.identity.nombre || 'vos';
   useEffect(() => {
@@ -54,6 +57,19 @@ export default function BriefingMatutino({ onClose }: Props) {
         .catch(() => {});
     }
   }, [nombre]);
+
+  // Máximo 1 check-in relacional proactivo por día (ver optimizacionService.ts).
+  useEffect(() => {
+    obtenerCheckInRelacionalDelDia({ personas: personasImportantes, energyEntries, hormoneEntries, memoryEntries })
+      .then(resultado => {
+        if (resultado.crisis && resultado.recurso) {
+          setRecursoCrisis(`Si necesitás hablar con alguien ahora: ${resultado.recurso.nombre}, ${resultado.recurso.telefono}.`);
+        } else if (resultado.correlaciones[0]) {
+          setCheckInRelacional(resultado.correlaciones[0].pregunta);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const ahora = format(new Date(), "EEEE d 'de' MMMM", { locale: es });
   const horaActual = format(new Date(), 'HH:mm');
@@ -87,6 +103,7 @@ export default function BriefingMatutino({ onClose }: Props) {
       ? `Próxima reunión: ${proximaReunion.titulo} a las ${proximaReunion.hora}${proximaReunion.personas.length ? ` con ${proximaReunion.personas.join(', ')}` : ''}.`
       : '',
     patternInsight || '',
+    recursoCrisis || checkInRelacional || '',
     '¿Arrancamos?',
   ].filter(Boolean);
 

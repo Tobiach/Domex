@@ -121,6 +121,45 @@ Devolvé solo JSON sin markdown, máximo 2 correlaciones (si no hay evidencia su
   return { crisis: false, correlaciones };
 }
 
+const CHECKIN_RELACIONAL_KEY_PREFIX = 'domex_checkin_relacional_';
+
+function getCheckInKeyHoy(): string {
+  return CHECKIN_RELACIONAL_KEY_PREFIX + new Date().toISOString().split('T')[0];
+}
+
+function getCheckInCacheadoHoy(): MotorCorrelacionResult | null {
+  try {
+    const raw = localStorage.getItem(getCheckInKeyHoy());
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+// Máximo 1 check-in relacional proactivo por día (KICKOFF-PARALELO-CODIGO.md, punto 5):
+// el resultado se cachea por fecha; si hay más de un patrón, se prioriza el de mayor
+// confianza y el resto espera al día siguiente.
+export async function obtenerCheckInRelacionalDelDia(data: {
+  personas: PersonaImportante[];
+  energyEntries: EnergyEntry[];
+  hormoneEntries: HormoneEntry[];
+  memoryEntries: MemoryEntry[];
+}): Promise<MotorCorrelacionResult> {
+  const cacheado = getCheckInCacheadoHoy();
+  if (cacheado) return cacheado;
+
+  const resultado = await detectarPatronesRelacionales(data);
+  const delDia: MotorCorrelacionResult = resultado.crisis
+    ? resultado
+    : {
+        ...resultado,
+        correlaciones: resultado.correlaciones.length
+          ? [[...resultado.correlaciones].sort((a, b) => b.confianza - a.confianza)[0]]
+          : [],
+      };
+
+  localStorage.setItem(getCheckInKeyHoy(), JSON.stringify(delDia));
+  return delDia;
+}
+
 export async function generarOportunidades(data: {
   ideas: Idea[];
   contactos: ContactoCRM[];
