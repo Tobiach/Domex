@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { User, Palette, Target, Layout, RefreshCw, ChevronRight, Camera, Check, Zap, AlertTriangle, Play, Download, Bell } from 'lucide-react';
+import { User, Palette, Target, Layout, RefreshCw, ChevronRight, Camera, Check, Zap, AlertTriangle, Play, Download, Bell, ShieldCheck } from 'lucide-react';
 import { seedDemoData } from '../lib/seedData';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { cn } from '../lib/utils';
@@ -31,6 +31,25 @@ const ACCENT_COLORS = [
 ];
 
 const NOTIF_KEY = 'domex_notif_enabled';
+
+// Consentimientos separados (punto 4 KICKOFF-PARALELO-CODIGO.md): opt-in explícito
+// por categoría, nunca un solo "acepto términos". Default false — nada se asume.
+const CONSENT_KEY = 'domex_consentimientos';
+type Consentimientos = { voz: boolean; saludEmocional: boolean; datosTerceros: boolean };
+const DEFAULT_CONSENT: Consentimientos = { voz: false, saludEmocional: false, datosTerceros: false };
+
+function useConsentimientos() {
+  const [consent, setConsent] = useState<Consentimientos>(() => {
+    try { return { ...DEFAULT_CONSENT, ...JSON.parse(localStorage.getItem(CONSENT_KEY) || '{}') }; }
+    catch { return DEFAULT_CONSENT; }
+  });
+  const toggle = (key: keyof Consentimientos) => {
+    const next = { ...consent, [key]: !consent[key] };
+    setConsent(next);
+    localStorage.setItem(CONSENT_KEY, JSON.stringify(next));
+  };
+  return { consent, toggle };
+}
 
 const MODULE_NAMES: Record<string, string> = {
   dashboard: 'TABLERO PRINCIPAL',
@@ -145,6 +164,7 @@ export default function Settings() {
   const [exportDone, setExportDone] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(() => localStorage.getItem(NOTIF_KEY) === 'true');
   const { cfg: briefingCfg, update: updateBriefing } = useBriefingConfig();
+  const { consent, toggle: toggleConsent } = useConsentimientos();
 
   const handleExport = () => {
     exportToCSV();
@@ -346,6 +366,25 @@ export default function Settings() {
               ))}
             </div>
           )}
+        </div>
+      </Section>
+
+      {/* Privacidad y consentimiento */}
+      <Section label="PRIVACIDAD Y CONSENTIMIENTO" icon={ShieldCheck}>
+        <div className="bm-card p-4 space-y-4">
+          {([
+            { key: 'voz' as const, titulo: 'VOZ Y TRANSCRIPCIÓN', desc: 'Permitir que AIcolmena procese tu voz para convertirla en texto' },
+            { key: 'saludEmocional' as const, titulo: 'SALUD Y ESTADO EMOCIONAL', desc: 'Registrar y analizar datos de ánimo, energía, sueño y hormonas' },
+            { key: 'datosTerceros' as const, titulo: 'DATOS DE TERCEROS', desc: 'Guardar información sobre personas importantes en tu vida' },
+          ]).map((item, i) => (
+            <div key={item.key} className="flex items-center justify-between" style={{ paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : undefined }}>
+              <div className="pr-4">
+                <p className="text-[12px] font-black tracking-wide text-white/80">{item.titulo}</p>
+                <span className="sys-label">{item.desc}</span>
+              </div>
+              <Toggle active={consent[item.key]} onToggle={() => toggleConsent(item.key)} />
+            </div>
+          ))}
         </div>
       </Section>
 
