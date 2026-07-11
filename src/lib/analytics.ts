@@ -13,8 +13,8 @@ export function initAnalytics() {
     autocapture: false,          // no captura clics/inputs automáticos
     capture_pageview: false,     // controlamos manualmente
     capture_pageleave: false,
-    disable_session_recording: true,
-    mask_all_text: true,         // enmascara texto en capturas
+    disable_session_recording: false, // replay activo para ver uso real en pruebas de 14 días
+    mask_all_text: true,         // enmascara TODO el texto en el replay (personas, notas, salud)
     mask_all_element_attributes: true,
 
     // ── Comportamiento ────────────────────────────────────────

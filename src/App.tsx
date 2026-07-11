@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import { MainLayout } from './components/Layout/MainLayout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { initAnalytics } from './lib/analytics';
 
 const Dashboard   = lazy(() => import('./views/Dashboard'));
@@ -48,6 +49,7 @@ export default function App() {
   useEffect(() => { initAnalytics(); }, []);
 
   return (
+    <ErrorBoundary>
     <AuthProvider>
     <AppProvider>
       <BrowserRouter>
@@ -102,5 +104,6 @@ export default function App() {
       </BrowserRouter>
     </AppProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
