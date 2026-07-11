@@ -2,13 +2,17 @@
 # Actualizar al inicio y cierre de cada sesión
 
 ## ESTADO ACTUAL DEL PROYECTO
-ESTADO_APP: redesign-v2 + ajuste visual HOY (Miel Fundida v2) — commit ba5b10d
-BRANCH_ACTIVA: redesign-v2
-ULTIMO_DEPLOY: 2026-06-11 — https://domex-temp.vercel.app (HOY v2 live)
-BUGS_CRITICOS: 0
-TSC_ERRORS: 0
-FEATURE_ACTUAL: Pantalla HOY — Miel Fundida v2 spec aplicado
-PROXIMO_PASO: Tobias revisa HOY → ajustes adicionales si aplica → merge a main
+ESTADO_APP: motor de contexto emocional/relacional en construcción (chat paralelo) — commit
+más reciente en main: f743b69 (modelo local-first de persona importante)
+BRANCH_ACTIVA: main (redesign-v2 ya mergeada hace tiempo, ese branch quedó obsoleto)
+ULTIMO_DEPLOY: sin confirmar desde acá — verificar con `vercel ls` antes de asumir qué está
+live; los env vars de Supabase nuevo están seteados en Vercel pero requieren un deploy nuevo
+para tomar efecto
+BUGS_CRITICOS: 0 conocidos
+TSC_ERRORS: 0 (al momento del último commit)
+FEATURE_ACTUAL: motor de personas + motor de correlación + piso de seguridad de crisis (ver
+KICKOFF-PARALELO-CODIGO.md para el detalle completo)
+PROXIMO_PASO: cerrar el gate de P1 (14 días de uso propio estable) antes de tocar nada visual
 
 ## MÉTRICAS ACTUALES
 USUARIOS_PAGOS: 0
@@ -16,9 +20,10 @@ MRR_ACTUAL: $0
 
 ## PROTOCOLO DE ROLLBACK
 - Volver atrás: `git checkout main`
-- Restaurar desde tag: `git checkout v1-estable-pre-redesign`
+- Checkpoint real (verificado, no el "v1" que este doc mencionaba antes y nunca existió en git):
+  tag `checkpoint-pre-reestructuracion-2026-07-11` sobre commit `e8e44ef`
 - Merge a main: NO hacer sin confirmación explícita de Tobias
-- Deploy producción: ya deployado en domex-temp.vercel.app (branch redesign-v2)
+- Deploy producción: pendiente de re-deployar con las env vars de Supabase nuevo aplicadas
 
 ## REDESIGN — 11/11 PASOS COMPLETOS
 
@@ -55,18 +60,29 @@ MRR_ACTUAL: $0
 - Conciencia usa grid 2×2 (no 3-col con orphan)
 - ScoreCircle migrado de cyan (#00D4FF) a honey tokens
 
-## PENDIENTE (post-merge)
-- Configurar alias aicolmena.vercel.app en Vercel dashboard (manual)
-- Push notifications retención D1/D3/D7
-- Supabase setup tabla early_access
+## PENDIENTE
+- [x] Alias aicolmena.vercel.app — hecho 2026-07-11 vía Vercel CLI
+- [x] Supabase conectado — proyecto nuevo dedicado (aerclckcbrzihoefmeep), schema + RLS +
+      Email OTP + SMTP (Resend) aplicados vía CLI
+- [ ] Deploy a producción con las env vars nuevas (falta disparar el build)
+- [ ] Push notifications retención D1/D3/D7 — sigue sin arrancar, ver BACKLOG.md P1
+- [ ] Resolver acceso a Vercel en PC madre (bloqueado por passkey 2FA)
+- [ ] 10 preguntas abiertas del plan de reestructuración/crecimiento (ver Drive)
 
 ## PRÓXIMOS 3 PASOS
-1. Tobias revisa visualmente https://domex-temp.vercel.app
-2. Si OK → `git checkout main && git merge redesign-v2` (con confirmación explícita)
-3. Deploy desde main → alias aicolmena.vercel.app
+1. Terminar motor emocional en el chat paralelo (KICKOFF-PARALELO-CODIGO.md)
+2. 14 días de uso propio estable (gate antes de tocar nada visual)
+3. Deploy a producción una vez resuelto el acceso de Vercel en PC madre (o desde PC B)
 
 ## HISTORIAL DE SESIONES
 
 ### 2026-06-11 — Redesign completo 11/11 pasos
 Pasos 1-11 implementados en una sesión. 0 errores TSC. Deploy en domex-temp.vercel.app.
-Tag v1-estable-pre-redesign intacto en main como rollback.
+
+### 2026-07-10/11 — Rebrand, auditoría, research de mercado/legal, motor emocional
+Rebrand Domex→AIcolmena completado (PWA manifest agregado). Research de mercado y legal
+(AR/BR/CL/CO) vía Perplexity — ver carpeta Drive "AIcolmena — Fundamentos e Inversión". Plan de
+reestructuración visual + crecimiento armado (modelo Fable 5) — pausado hasta cerrar el motor
+emocional. Migración completa a Supabase nuevo vía CLI (schema, auth, SMTP). Arrancó
+construcción del motor de contexto emocional/relacional en chat paralelo (persona importante +
+correlación + piso de seguridad de crisis).
