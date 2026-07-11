@@ -1,5 +1,6 @@
 ﻿import { callGroq, callGroqFast } from './groqService';
-import type { BlindSpot, LegacyProfile, Idea, Habito, ContactoCRM, Decision } from '../types';
+import { detectarSenalCrisis, RECURSO_CRISIS_ARGENTINA, type RecursoAyuda } from './crisisService';
+import type { BlindSpot, LegacyProfile, Idea, Habito, ContactoCRM, Decision, PersonaImportante, EnergyEntry, HormoneEntry, MemoryEntry } from '../types';
 
 interface OpportunityRadarResult {
   oportunidades: { titulo: string; razon: string; accion: string }[];
@@ -41,6 +42,83 @@ JSON exacto (array de 3):
   let spots: Omit<BlindSpot, 'id' | 'completado' | 'creadoEn'>[];
   try { spots = JSON.parse(match ? match[0] : cleaned); } catch { throw new Error('Análisis no disponible.'); }
   return spots.map(s => ({ ...s, id: `bs_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, completado: false, creadoEn: new Date().toISOString() }));
+}
+
+// ─── Motor de correlación relacional/emocional ─────────────────────────────
+
+export interface CorrelacionRelacional {
+  persona: string;
+  pregunta: string;
+  evidencia: string[];
+  confianza: number; // 0-100
+}
+
+export interface MotorCorrelacionResult {
+  crisis: boolean;
+  recurso?: RecursoAyuda;
+  correlaciones: CorrelacionRelacional[];
+}
+
+const UMBRAL_TEMAS_RECURRENTES = 3;
+
+export async function detectarPatronesRelacionales(data: {
+  personas: PersonaImportante[];
+  energyEntries: EnergyEntry[];
+  hormoneEntries: HormoneEntry[];
+  memoryEntries: MemoryEntry[];
+}): Promise<MotorCorrelacionResult> {
+  // Piso de seguridad: ningún texto libre entra al motor sin pasar por acá primero.
+  const textosLibres = [
+    ...data.personas.map(p => p.notas),
+    ...data.memoryEntries.map(m => m.contexto),
+  ].filter(t => t && t.trim().length > 0);
+
+  for (const texto of textosLibres) {
+    const chequeo = await detectarSenalCrisis(texto);
+    if (chequeo.detectada) {
+      return { crisis: true, recurso: RECURSO_CRISIS_ARGENTINA, correlaciones: [] };
+    }
+  }
+
+  // Umbral conservador: solo personas con patrones repetidos entran al análisis.
+  const personasConPatron = data.personas.filter(p => p.temasRecurrentes.length >= UMBRAL_TEMAS_RECURRENTES);
+  if (personasConPatron.length === 0) return { crisis: false, correlaciones: [] };
+
+  const resumenPersonas = personasConPatron.map(p =>
+    `${p.nombre} (${p.tipoVinculo}): temas recurrentes [${p.temasRecurrentes.join(', ')}], última interacción ${p.ultimaInteraccion ?? 'sin registro'}, temperatura reciente ${p.temperaturaReciente ?? 'sin datos'}`
+  ).join('\n');
+
+  const resumenEnergia = data.energyEntries.slice(-7)
+    .map(e => `${e.fecha}: energía ${e.score}/10, sueño ${e.factores.sueno}h (${e.factores.tipoDeSueno})`)
+    .join('\n') || 'sin datos recientes';
+
+  const resumenHormonas = data.hormoneEntries.slice(-7)
+    .map(h => `${h.fecha}: mood ${h.inputs.mood}/10, estrés ${h.inputs.estres}/10`)
+    .join('\n') || 'sin datos recientes';
+
+  const prompt = `Sos el motor de correlación emocional/relacional de AIcolmena. Cruzá los patrones de personas importantes con los datos de ánimo/energía del usuario y detectá correlaciones POSIBLES.
+
+REGLA NO NEGOCIABLE: nunca afirmes una causa. Cada salida tiene que estar formulada como pregunta abierta ("¿tiene que ver con...?", "¿notás que...?"). Prohibido usar afirmaciones tipo "X te baja la energía".
+
+PERSONAS CON PATRONES (${UMBRAL_TEMAS_RECURRENTES}+ temas repetidos):
+${resumenPersonas}
+
+ENERGÍA RECIENTE:
+${resumenEnergia}
+
+HORMONAS/MOOD RECIENTE:
+${resumenHormonas}
+
+Devolvé solo JSON sin markdown, máximo 2 correlaciones (si no hay evidencia suficiente, array vacío):
+[{"persona":"nombre","pregunta":"¿...?","evidencia":["dato 1","dato 2"],"confianza":número 0-100}]`;
+
+  const text = await callGroq([{ role: 'user', content: prompt }], { maxTokens: 400, temperature: 0.3 });
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+  const match = cleaned.match(/\[[\s\S]*\]/);
+  let correlaciones: CorrelacionRelacional[];
+  try { correlaciones = JSON.parse(match ? match[0] : cleaned); } catch { correlaciones = []; }
+
+  return { crisis: false, correlaciones };
 }
 
 export async function generarOportunidades(data: {
