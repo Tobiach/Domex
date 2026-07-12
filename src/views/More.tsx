@@ -1,17 +1,30 @@
 ﻿import React from 'react';
 import { motion } from 'motion/react';
-import { 
-  User, 
-  Settings, 
-  Shield, 
-  Bell, 
-  HelpCircle, 
-  LogOut, 
+import {
+  User,
+  Settings,
+  Shield,
+  Bell,
+  HelpCircle,
+  LogOut,
   Key,
   BadgeCheck,
   ChevronRight,
   Monitor,
-  GraduationCap
+  GraduationCap,
+  TrendingUp,
+  Brain,
+  BookOpen,
+  Utensils,
+  Battery,
+  Activity,
+  Scale,
+  Map,
+  Library,
+  MessageCircle,
+  GitBranch,
+  Target,
+  Compass,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +38,31 @@ export default function More() {
       titulo: 'Crecimiento',
       items: [
         { icon: GraduationCap, etiqueta: 'Habilidades', sub: 'Domina ventas, finanzas e IA', color: 'text-primary', path: '/habilidades' },
+        { icon: TrendingUp, etiqueta: 'Mercado', sub: 'Cripto y acciones en vivo', color: 'text-emerald-500', path: '/mercado' },
+      ]
+    },
+    {
+      // Sacado de lugares prominentes (poda de vistas) — accesible solo acá.
+      titulo: 'Conciencia Integral',
+      items: [
+        { icon: Brain, etiqueta: 'Conciencia', sub: 'Centro de desarrollo integral', color: 'text-violet-500', path: '/conciencia' },
+        { icon: BookOpen, etiqueta: 'Aprendizaje', sub: 'Categorías y lecciones', color: 'text-indigo-500', path: '/conciencia/aprender' },
+        { icon: Utensils, etiqueta: 'Nutrición', sub: 'Comidas, calorías y azúcar', color: 'text-emerald-500', path: '/conciencia/nutricion' },
+        { icon: Battery, etiqueta: 'Energy Tracker', sub: 'Sueño y energía diaria', color: 'text-amber-500', path: '/conciencia/energia' },
+        { icon: Activity, etiqueta: 'Hormone Balance', sub: 'Dato sensible — ver TODO en el código', color: 'text-violet-500', path: '/conciencia/hormonas' },
+        { icon: Scale, etiqueta: 'Energy Balance M/F', sub: 'Balance de energía masculina/femenina', color: 'text-pink-500', path: '/conciencia/balance' },
+        { icon: Map, etiqueta: 'Learning Paths', sub: 'Rutas de aprendizaje guiadas', color: 'text-indigo-500', path: '/conciencia/paths' },
+        { icon: Library, etiqueta: 'Biblioteca', sub: 'Podcasts y libros', color: 'text-orange-500', path: '/conciencia/biblioteca' },
+        { icon: MessageCircle, etiqueta: 'Debate', sub: 'Ejercicios de pensamiento crítico', color: 'text-violet-500', path: '/conciencia/debate' },
+      ]
+    },
+    {
+      // Sacado de lugares prominentes (poda de vistas) — accesible solo acá.
+      titulo: 'Optimización Existencial',
+      items: [
+        { icon: GitBranch, etiqueta: 'Decision Log', sub: 'Historial de decisiones', color: 'text-orange-500', path: '/optimizacion/decisiones' },
+        { icon: Target, etiqueta: 'Accountability', sub: 'Metas y progreso', color: 'text-emerald-500', path: '/optimizacion/accountability' },
+        { icon: Compass, etiqueta: 'Legacy Builder', sub: 'Visión y alineación', color: 'text-violet-500', path: '/optimizacion/legado' },
       ]
     },
     {

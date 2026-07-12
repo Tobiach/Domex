@@ -173,11 +173,11 @@ export default function Insights() {
           <div className="bm-card p-4">
             <p className="sys-label mb-3" style={{ color: 'var(--violet-soft)' }}>MÁS PROFUNDO</p>
             <div className="space-y-1.5">
+              {/* Conciencia se saco de este lugar prominente (poda de vistas) — solo via More */}
               {[
                 { label: 'Intel & Noticias', path: '/intel', icon: '📡' },
                 { label: 'Hábitos',          path: '/habitos', icon: '⚡' },
                 { label: 'Optimización',     path: '/optimizacion', icon: '🎯' },
-                { label: 'Conciencia',       path: '/conciencia', icon: '🧠' },
               ].map(({ label, path, icon }) => (
                 <button
                   key={path}

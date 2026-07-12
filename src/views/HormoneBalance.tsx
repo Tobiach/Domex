@@ -5,6 +5,13 @@ import { useApp } from '../context/AppContext';
 import { calcScores, analizarHormonas } from '../services/hormoneService';
 import type { HormoneEntry } from '../types';
 
+// TODO explícito: NO reactivar este módulo en nav principal / lugar prominente
+// sin resolver antes el consentimiento específico de este dato. Research legal
+// marca datos hormonales/salud sexual como sensibilidad máxima en Brasil (LGPD,
+// "dado sensível") y Colombia (Ley 1581, "dato sensible"). Queda accesible solo
+// vía "More" hasta que ese consentimiento puntual exista (más allá del checkbox
+// genérico de "salud/estado emocional" de Settings).
+
 const HOY = new Date().toISOString().split('T')[0];
 
 // SVG radar para 3 ejes: T, C, D

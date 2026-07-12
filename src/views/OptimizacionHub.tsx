@@ -1,20 +1,15 @@
 ﻿import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { GitBranch, Target, Compass, Eye, Loader2, ChevronRight, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Eye, Loader2, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { detectarBlindSpots, generarOportunidades } from '../services/optimizacionService';
 
 export default function OptimizacionHub() {
-  const navigate = useNavigate();
   const { ideas, tareas, habitos, contactos, decisions, blindSpots, setBlindSpots,
-    completarBlindSpot, accountabilityGoals, legacy, mercado } = useApp();
+    completarBlindSpot, mercado } = useApp();
   const [escaneando, setEscaneando] = useState(false);
   const [radarCargando, setRadarCargando] = useState(false);
   const [radarResult, setRadarResult] = useState<string | null>(null);
 
-  const HOY = new Date().toISOString().split('T')[0];
-  const activo = accountabilityGoals.find(g => !g.completada && g.fechaFin >= HOY);
   const spotsActivos = blindSpots.filter(b => !b.completado);
   const btcChange = mercado.find(m => m.simbolo === 'BTC')?.cambio ?? 0;
 
@@ -37,12 +32,6 @@ export default function OptimizacionHub() {
     setRadarCargando(false);
   };
 
-  const MODULES = [
-    { label: 'DECISIONES', path: '/optimizacion/decisiones', color: '#F97316', icon: GitBranch, stat: decisions.length, statLabel: 'decisiones' },
-    { label: 'ACCOUNTABILITY', path: '/optimizacion/accountability', color: '#10B981', icon: Target, stat: activo ? `${activo.progreso}%` : '—', statLabel: activo ? 'progreso' : 'sin meta' },
-    { label: 'LEGADO', path: '/optimizacion/legado', color: '#8B5CF6', icon: Compass, stat: legacy ? `${legacy.alineacion}%` : '—', statLabel: 'alineación' },
-  ];
-
   return (
     <div className="px-4 pt-4 pb-24 space-y-4">
       <div>
@@ -53,32 +42,8 @@ export default function OptimizacionHub() {
         <h1 className="text-3xl font-black tracking-tighter uppercase">Optimización<br />Existencial</h1>
       </div>
 
-      {/* Módulos */}
-      <div className="space-y-2">
-        {MODULES.map((mod, i) => {
-          const Icon = mod.icon;
-          return (
-            <motion.button key={mod.path} onClick={() => navigate(mod.path)}
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full bm-card p-4 flex items-center gap-4 text-left relative overflow-hidden">
-              <div className="absolute left-0 top-3 bottom-3 w-[2px] rounded-r" style={{ background: mod.color }} />
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: `${mod.color}18`, border: `1px solid ${mod.color}28` }}>
-                <Icon size={16} style={{ color: mod.color }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="sys-label block mb-0.5" style={{ color: mod.color }}>{mod.label}</span>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-black sys-value text-lg" style={{ color: mod.color }}>{mod.stat}</p>
-                <span className="sys-label">{mod.statLabel}</span>
-              </div>
-              <ChevronRight size={14} className="text-white/20 shrink-0" />
-            </motion.button>
-          );
-        })}
-      </div>
+      {/* Decisiones/Accountability/Legado se sacaron de este lugar prominente
+          (poda de vistas) — accesibles solo via More */}
 
       {/* Blind Spots */}
       <div className="bm-card p-4 space-y-3">

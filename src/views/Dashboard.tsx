@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  TrendingUp, TrendingDown, Zap, Newspaper, Calendar,
-  Check, X, BookOpen, Utensils, Brain, Mic, ArrowUp, Play, Pause, RotateCcw, Target,
+  Zap, Newspaper, Calendar,
+  Check, X, Brain, Mic, ArrowUp, Play, Pause, RotateCcw, Target,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useApp } from '../context/AppContext';
@@ -341,9 +341,8 @@ function GoldParticles() {
 
 export default function Dashboard() {
   const {
-    tareas, mercado, agenda, noticiasLeidas, marcarNoticiaLeida,
-    alternarTarea, balanceCalculado, learningCategories, learningLessons,
-    mealEntries, memoryEntries, energyEntries,
+    tareas, agenda, noticiasLeidas, marcarNoticiaLeida,
+    alternarTarea, balanceCalculado, memoryEntries,
   } = useApp();
   const { profile } = useUserProfile();
   const streak = useStreaks();
@@ -365,8 +364,6 @@ export default function Dashboard() {
     setHistorial(getDailyScores());
   }, [score]);
 
-  const btc = mercado.find(m => m.simbolo === 'BTC');
-  const eth = mercado.find(m => m.simbolo === 'ETH');
   const ahora = new Date();
   const proximaReunion = agenda
     .filter(a => new Date(`${a.fecha}T${a.hora}`) > ahora)
@@ -570,51 +567,16 @@ export default function Dashboard() {
         {/* ── BARRA DE DICTADO RÁPIDO ── */}
         <QuickDictationBar />
 
-        {/* ── CAPITAL + MERCADO ── */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bm-card p-4">
-            <span className="sys-label block mb-2">CAPITAL</span>
-            <p className="text-[17px] font-black sys-value" style={{ color: balanceCalculado >= 0 ? 'white' : '#f87171' }}>
-              {new Intl.NumberFormat('es-AR', { style: 'currency', currency: profile.goals.moneda, maximumFractionDigits: 0 }).format(balanceCalculado)}
-            </p>
-            <button onClick={() => navigate('/capital')} className="sys-label mt-2 block hover:opacity-70 transition-opacity" style={{ color: 'var(--color-accent)' }}>
-              DETALLES →
-            </button>
-          </div>
-
-          <div className="bm-card p-4">
-            <span className="sys-label block mb-2">MERCADO</span>
-            {!btc && !eth ? (
-              <div className="space-y-2">
-                <div className="skeleton h-4 w-24 rounded" />
-                <div className="skeleton h-4 w-20 rounded" />
-              </div>
-            ) : (
-              <>
-                {btc && (
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="sys-label" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>BTC</span>
-                    <div className={cn('flex items-center gap-0.5 text-[11px] font-black sys-value', btc.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                      {btc.cambio >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                      {btc.cambio >= 0 ? '+' : ''}{btc.cambio}%
-                    </div>
-                  </div>
-                )}
-                {eth && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="sys-label" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>ETH</span>
-                    <div className={cn('flex items-center gap-0.5 text-[11px] font-black sys-value', eth.cambio >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                      {eth.cambio >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                      {eth.cambio >= 0 ? '+' : ''}{eth.cambio}%
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-            <button onClick={() => navigate('/mercado')} className="sys-label mt-2 block hover:opacity-70 transition-opacity" style={{ color: 'var(--color-accent)' }}>
-              DETALLES →
-            </button>
-          </div>
+        {/* ── CAPITAL ── */}
+        {/* Mercado se saco de este lugar prominente (ver correccion de poda de vistas) — accesible solo via More */}
+        <div className="bm-card p-4">
+          <span className="sys-label block mb-2">CAPITAL</span>
+          <p className="text-[17px] font-black sys-value" style={{ color: balanceCalculado >= 0 ? 'white' : '#f87171' }}>
+            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: profile.goals.moneda, maximumFractionDigits: 0 }).format(balanceCalculado)}
+          </p>
+          <button onClick={() => navigate('/capital')} className="sys-label mt-2 block hover:opacity-70 transition-opacity" style={{ color: 'var(--color-accent)' }}>
+            DETALLES →
+          </button>
         </div>
 
         {/* ── INTEL STREAM ── */}
@@ -652,39 +614,22 @@ export default function Dashboard() {
           </button>
         )}
 
-        {/* ── CONCIENCIA INTEGRAL ── */}
+        {/* ── MEMORIA ── */}
+        {/* Aprender/Nutricion/Energia se sacaron de este lugar prominente (poda de vistas) — solo via More */}
         {(() => {
           const hoy = new Date().toISOString().split('T')[0];
-          const totalRacha = learningCategories.reduce((s, c) => s + c.racha, 0);
-          const totalLessons = learningLessons.filter(l => l.completado).length;
-          const calHoy = mealEntries.filter(m => m.creadoEn.startsWith(hoy)).reduce((s, m) => s + m.calorias, 0);
-          const azHoy = mealEntries.filter(m => m.creadoEn.startsWith(hoy)).reduce((s, m) => s + m.azucar, 0);
           const memHoy = memoryEntries.find(e => e.fecha === hoy);
-          const energiaHoy = energyEntries.find(e => e.fecha === hoy);
-          const widgets = [
-            { icon: BookOpen,  label: 'APRENDER', val: learningCategories.length > 0 ? `🔥${totalRacha}d` : '—', sub: learningCategories.length > 0 ? `${totalLessons} lecciones` : 'Sin categorías', color: '#6366F1', path: '/conciencia/aprender' },
-            { icon: Utensils,  label: 'NUTRICIÓN', val: calHoy > 0 ? `${calHoy}kcal` : '—', sub: calHoy > 0 ? `${azHoy}g azúcar` : 'Sin registro hoy',  color: '#10B981', path: '/conciencia/nutricion' },
-            { icon: Brain,     label: 'MEMORIA',   val: memHoy ? `${memHoy.score}/10` : '—', sub: memHoy ? 'Check-in hoy ✓' : 'Sin check-in',             color: '#8B5CF6', path: '/conciencia/memoria' },
-            { icon: Zap,       label: 'ENERGÍA',   val: energiaHoy ? `${energiaHoy.score}/10` : '—', sub: energiaHoy ? `${energiaHoy.factores.sueno}h sueño` : 'Sin check-in', color: '#F59E0B', path: '/conciencia/energia' },
-          ];
           return (
-            <div className="grid grid-cols-2 gap-2">
-              {widgets.map(w => {
-                const Icon = w.icon;
-                return (
-                  <button key={w.path} onClick={() => navigate(w.path)}
-                    className="bm-card p-3 text-left relative overflow-hidden"
-                    style={{ '--bm-accent': w.color } as React.CSSProperties}>
-                    <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r" style={{ background: w.color }} />
-                    <Icon size={11} style={{ color: w.color }} className="mb-1.5 ml-1" />
-                    <p className="text-[14px] font-black sys-value leading-none mb-0.5 ml-1"
-                      style={{ color: w.val !== '—' ? 'white' : 'rgba(255,255,255,0.2)' }}>{w.val}</p>
-                    <span className="sys-label block ml-1" style={{ color: w.color, opacity: 1 }}>{w.label}</span>
-                    <span className="sys-label block mt-0.5 ml-1">{w.sub}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <button onClick={() => navigate('/conciencia/memoria')}
+              className="bm-card p-3 text-left relative overflow-hidden"
+              style={{ '--bm-accent': '#8B5CF6' } as React.CSSProperties}>
+              <div className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r" style={{ background: '#8B5CF6' }} />
+              <Brain size={11} style={{ color: '#8B5CF6' }} className="mb-1.5 ml-1" />
+              <p className="text-[14px] font-black sys-value leading-none mb-0.5 ml-1"
+                style={{ color: memHoy ? 'white' : 'rgba(255,255,255,0.2)' }}>{memHoy ? `${memHoy.score}/10` : '—'}</p>
+              <span className="sys-label block ml-1" style={{ color: '#8B5CF6', opacity: 1 }}>MEMORIA</span>
+              <span className="sys-label block mt-0.5 ml-1">{memHoy ? 'Check-in hoy ✓' : 'Sin check-in'}</span>
+            </button>
           );
         })()}
 
