@@ -1,8 +1,6 @@
 import React from 'react';
 
-// TODO: falta el número real de WhatsApp de soporte de AIcolmena — no inventado a propósito.
-// Reemplazar antes de que esto llegue a producción (mismo criterio que crisisService.ts).
-const SOPORTE_WHATSAPP = '';
+const SOPORTE_WHATSAPP = '5491136026302';
 
 interface Props {
   children: React.ReactNode;
